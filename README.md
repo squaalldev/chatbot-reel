@@ -1,14 +1,15 @@
 ---
-title: Streamlit Template Space
+title: Chatbot Write Reels
 emoji: 🚀
 colorFrom: red
 colorTo: red
 sdk: docker
 app_port: 8501
 tags:
-  - streamlit
+- streamlit
 pinned: false
 short_description: Streamlit template space
+license: unknown
 ---
 
 # Welcome to Streamlit!
