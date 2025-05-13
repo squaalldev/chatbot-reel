@@ -1,20 +1,11 @@
 ---
-title: Chatbot Write Reels
-emoji: 🚀
+license: mit
+title: Chatbot_Gemini_Streamlit
+sdk: streamlit
+emoji: 🏆
 colorFrom: red
-colorTo: red
-sdk: docker
-app_port: 8501
-tags:
-- streamlit
-pinned: false
-short_description: Streamlit template space
-license: unknown
+colorTo: yellow
+pinned: true
+sdk_version: 1.45.0
+short_description: Transform your audience's thoughts into persuasive bullets
 ---
-
-# Welcome to Streamlit!
-
-Edit `/src/streamlit_app.py` to customize this app to your heart's desire. :heart:
-
-If you have any questions, checkout our [documentation](https://docs.streamlit.io) and [community
-forums](https://discuss.streamlit.io).

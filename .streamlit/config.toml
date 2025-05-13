@@ -1,0 +1,7 @@
+[theme]
+primaryColor = "#4ECDC4"  # Color turquesa similar al del logo
+backgroundColor = "#1A1A1A"  # Fondo oscuro para resaltar los elementos
+secondaryBackgroundColor = "#252A34"  # Gris oscuro para paneles
+textColor = "#FFFFFF"  # Texto blanco para mejor contraste
+font = "sans serif"
+# 335095
