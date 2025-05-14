@@ -4,8 +4,8 @@ import joblib
 import streamlit as st
 import google.generativeai as genai
 from dotenv import load_dotenv
-from reel_formulas import puv_formulas
-from system_prompts import get_unified_puv_prompt
+from reel_formulas import reel_formulas  # Cambiar de puv_formulas a reel_formulas
+from system_prompts import get_unified_reel_prompt  # Cambiar de get_unified_puv_prompt a get_unified_reel_prompt
 from session_state import SessionState
 
 # Inicializar el estado de la sesión
@@ -261,7 +261,7 @@ if not state.has_messages():
     display_examples()
 
     # Inicializar el chat con el prompt unificado
-    system_prompt = get_unified_puv_prompt()
+    system_prompt = get_unified_reel_prompt()  # Cambiar de get_unified_puv_prompt a get_unified_reel_prompt
     if state.chat is not None:  # Verificación adicional de seguridad
         state.chat.send_message(system_prompt)
     else:
