@@ -95,13 +95,34 @@ def handle_chat_title(prompt):
 
 def get_enhanced_prompt(prompt, is_example):
     """Genera el prompt mejorado según el tipo de mensaje"""
+    # Importar las preguntas directamente desde system_prompts.py
+    from system_prompts import get_discovery_questions
+    
+    # Obtener la lista de preguntas
+    discovery_questions = get_discovery_questions()
+    
     if is_greeting(prompt):
-        return f"El usuario te ha saludado con '{prompt}'. Preséntate brevemente (máximo 2 líneas), explica qué es un guion de Reel en 1 línea, y procede a hacer las 4 preguntas de la FASE DE DESCUBRIMIENTO DEL REEL una por una."
+        return f"El usuario te ha saludado con '{prompt}'. Preséntate brevemente (máximo 2 líneas), explica qué es un guion de Reel en 1 línea, y haz ÚNICAMENTE esta pregunta: '{discovery_questions[0]}'"
     elif is_example:
-        return f"El usuario ha seleccionado un ejemplo: '{prompt}'. Responde de manera breve y directa, y luego procede a hacer las 4 preguntas de la FASE DE DESCUBRIMIENTO DEL REEL una por una."
+        return f"El usuario ha seleccionado un ejemplo: '{prompt}'. Responde de manera breve y directa, y haz ÚNICAMENTE esta pregunta: '{discovery_questions[0]}'"
     else:
-        # Para conversaciones normales, mantener el flujo de preguntas
-        return prompt + " [IMPORTANTE: Sigue el proceso de la FASE DE DESCUBRIMIENTO DEL REEL y haz las 4 preguntas una por una para recopilar la información necesaria. Recuerda que estamos creando guiones para Reels de Instagram/Facebook (videos cortos de 15-60 segundos).]"
+        # Analizar la respuesta del usuario para determinar qué pregunta hacer a continuación
+        if "audiencia" in prompt.lower() or "dirigido" in prompt.lower() or "público" in prompt.lower():
+            # Si el usuario respondió sobre la audiencia, hacer la segunda pregunta
+            return f"Gracias por esa información sobre tu audiencia. Ahora, {discovery_questions[1]}"
+        elif "producto" in prompt.lower() or "servicio" in prompt.lower() or "promocionar" in prompt.lower() or "ofreces" in prompt.lower():
+            # Si el usuario respondió sobre el producto/servicio, hacer la tercera pregunta
+            return f"Entendido. Ahora, {discovery_questions[2]}"
+        elif "problema" in prompt.lower() or "duda" in prompt.lower() or "gancho" in prompt.lower():
+            # Si el usuario respondió sobre el problema/duda, hacer la cuarta pregunta
+            return f"Perfecto. Por último, {discovery_questions[3]}"
+        elif "acción" in prompt.lower() or "cta" in prompt.lower() or "comprar" in prompt.lower() or "registrarse" in prompt.lower() or "seguir" in prompt.lower():
+            # Si el usuario respondió sobre la acción/CTA, proceder a la creación del guion
+            system_prompt = get_reels_script_prompt()
+            return f"Gracias por toda la información proporcionada. Ahora procederé a crear un guion de Reel efectivo basado en tus respuestas. {system_prompt}"
+        else:
+            # Si no se puede determinar en qué parte del proceso estamos, hacer la primera pregunta
+            return f"Para crear un guion de Reel efectivo, necesito hacerte algunas preguntas clave. Empecemos: {discovery_questions[0]}"
     return prompt
 
 def process_model_response(enhanced_prompt):

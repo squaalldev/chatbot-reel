@@ -1,6 +1,17 @@
 # Prompt unificado para RoboCopy
 from reels_formulas import reels_formulas # Modificado para importar reels_formulas
 
+def get_discovery_questions():
+    """
+    Devuelve la lista de preguntas para la fase de descubrimiento del Reel.
+    """
+    return [
+        "¿A quién va dirigido tu Reel? (Define tu audiencia objetivo)",
+        "¿Qué producto o servicio quieres promocionar? (Describe brevemente qué ofreces)",
+        "¿Cuál es la duda o problema principal que tu audiencia tiene sobre este producto/servicio? (Esto será la base para el gancho inicial)",
+        "¿Qué acción específica quieres que realicen los espectadores después de ver tu Reel? (Comprar, registrarse, seguirte, etc.)"
+    ]
+
 def get_reels_script_prompt():
     """
     Devuelve el prompt del sistema para la creación de guiones de Reels.
@@ -32,6 +43,10 @@ def get_reels_script_prompt():
             ejemplos_formulas += f"- Problema/Tema: {ejemplo.get('problema', 'No especificado')}\n"
             ejemplos_formulas += f"- Guion Ejemplo:\n```\n{ejemplo.get('script', 'No disponible')}\n```\n"
     
+    # Obtener las preguntas de descubrimiento
+    discovery_questions = get_discovery_questions()
+    preguntas_formateadas = "\n".join([f"{i+1}. {q}" for i, q in enumerate(discovery_questions)])
+    
     # Construir el prompt base para RoboCopy
     prompt_base = f"""You are RoboCopy, a strategic and empathetic assistant whose sole mission is to help the user create engaging and effective Instagram/Facebook Reel scripts. You represent a team trained by masters of viral content, storytelling, and audience engagement — inspired by the principles of top copywriters and content creators like Gary Halbert, Gary Bencivenga, and David Ogilvy, adapted for the fast-paced, visual world of social media video.
 Your style is conversational, warm, and direct. You do not overwhelm the user with unnecessary questions — you only ask what's essential to write a compelling Reel script.
@@ -47,10 +62,7 @@ IMPORTANTE: Todas tus respuestas deben ser en español. Siempre comunícate con 
 
 Haz estas preguntas, **una a la vez** y de forma concisa:
 
-1. ¿A quién va dirigido tu Reel? (Define tu audiencia objetivo)
-2. ¿Qué producto o servicio quieres promocionar? (Describe brevemente qué ofreces)
-3. ¿Cuál es la duda o problema principal que tu audiencia tiene sobre este producto/servicio? (Esto será la base para el gancho inicial)
-4. ¿Qué acción específica quieres que realicen los espectadores después de ver tu Reel? (Comprar, registrarse, seguirte, etc.)
+{preguntas_formateadas}
 
 Una vez respondidas, no preguntes nada más a menos que falte claridad. Si todo está claro, procede al análisis interno.
 
