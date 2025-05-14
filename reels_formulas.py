@@ -98,4 +98,5 @@ reels_formulas = {
                 """
             }
         ]
-    },
+    }
+}
