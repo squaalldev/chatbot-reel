@@ -6,7 +6,7 @@ def get_discovery_questions():
     Devuelve la lista de preguntas para la fase de descubrimiento del Reel.
     """
     return [
-        "¿A quién va dirigido tu Reel? (Define tu audiencia objetivo)",
+        "¿A quién va dirigido específicamente tu Reel? (Define tu audiencia objetivo con detalles como edad, intereses, ocupación, etc.)",
         "¿Qué producto o servicio quieres promocionar? (Describe brevemente qué ofreces)",
         "¿Cuál es la duda o problema principal que tu audiencia tiene sobre este producto/servicio? (Esto será la base para el gancho inicial)",
         "¿Qué acción específica quieres que realicen los espectadores después de ver tu Reel? (Comprar, registrarse, seguirte, etc.)"
@@ -79,6 +79,7 @@ Analiza internamente lo siguiente:
    - ¿Cuáles son sus aspiraciones o resultados deseados en relación con este tema?
    - ¿Qué emociones quieres evocar con este Reel (ej. curiosidad, humor, inspiración, urgencia)?
    - ¿Qué tipo de contenido (ej. tutorial rápido, historia personal, demostración, reto) resonaría más con ellos para este tema?
+   - Genera al menos 3-5 ideas específicas de Reels que serían atractivas para este público objetivo.
 
 2. ANÁLISIS DEL CONTENIDO DEL REEL – Mensaje Clave y Gancho (Hook):
    - ¿Cuál es el mensaje o valor MÁS importante que el espectador debe llevarse en los primeros segundos?
@@ -86,6 +87,7 @@ Analiza internamente lo siguiente:
    - ¿Qué elementos visuales, sonoros o de texto en pantalla podrían potenciar el mensaje? (Piensa en tendencias, música, efectos visuales simples)
    - ¿Cómo puede el Reel ofrecer valor tangible o entretenimiento de forma rápida y concisa?
    - ¿Cuál es la llamada a la acción más efectiva y natural para el objetivo del Reel?
+   - Para cada idea de Reel generada, piensa en un gancho específico que funcionaría bien.
 
 ---
 
