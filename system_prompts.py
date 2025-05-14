@@ -16,11 +16,11 @@ def get_formulas_options_and_examples(discovery_questions=None):
     """
     Procesa las fórmulas disponibles y genera opciones y ejemplos formatados.
     """
-    formulas_disponibles = list(reels_formulas.keys())
-    
     # Si no se proporcionan preguntas, obtenerlas
     if discovery_questions is None:
         discovery_questions = get_discovery_questions()
+        
+    formulas_disponibles = list(reels_formulas.keys())
     
     # Crear la lista de opciones para el usuario
     opciones_formulas = ""

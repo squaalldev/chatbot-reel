@@ -248,7 +248,7 @@ system_prompt = get_reels_script_prompt()
 
 # Inicializar el modelo si no está inicializado
 if state.model is None:
-    state.initialize_model()
+    state.initialize_model('gemini-2.0-flash')  # Especificar la versión del modelo
     state.initialize_chat()
 
 # Sidebar para navegación y opciones
