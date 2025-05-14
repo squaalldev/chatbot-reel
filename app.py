@@ -101,7 +101,7 @@ def get_enhanced_prompt(prompt, is_example):
         return f"El usuario ha seleccionado un ejemplo: '{prompt}'. Responde de manera breve y directa en máximo 3-4 líneas. Evita explicaciones largas. Termina con una única pregunta concreta."
     else:
         # Para conversaciones normales, añadir instrucción de brevedad
-        return prompt + " [IMPORTANTE: Responde de forma breve y concisa. Máximo 3-5 líneas. Si necesitas hacer preguntas, limítalas a 1-2 preguntas clave. Evita listas largas de opciones.]"
+        return prompt + " [IMPORTANTE: Responde de forma breve y concisa. Máximo 3-5 líneas. Si necesitas hacer preguntas, limítalas a 1-2 preguntas clave sobre el nicho/tema y objetivo del Reel. Recuerda que estamos creando guiones para Reels de Instagram/Facebook (videos cortos de 15-60 segundos), NO para películas o teatro.]"
     return prompt
 
 def process_model_response(enhanced_prompt):
