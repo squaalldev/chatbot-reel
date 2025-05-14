@@ -8,8 +8,36 @@ from reels_formulas import reels_formulas
 from system_prompts import get_reels_script_prompt
 from session_state import SessionState
 
+# Configuración de la página - DEBE SER LA PRIMERA LLAMADA A STREAMLIT
+st.set_page_config(
+    page_title="RoboCopy - Reels Creator",
+    page_icon="🎬",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Cargar variables de entorno
+load_dotenv()
+GOOGLE_API_KEY=os.environ.get('GOOGLE_API_KEY')
+genai.configure(api_key=GOOGLE_API_KEY)
+
+# Configuración de la aplicación
+new_chat_id = f'{time.time()}'
+MODEL_ROLE = 'model'
+USER_AVATAR_ICON = '👤'
+AI_AVATAR_ICON = '🤖'
+
 # Inicializar el estado de la sesión
 state = SessionState()
+
+# Crear directorio de datos si no existe
+os.makedirs('data', exist_ok=True)
+
+# Cargar historial de chats pasados
+try:
+    past_chats = joblib.load('data/past_chats_list')
+except:
+    past_chats = {}
 
 # Función para detectar saludos y generar respuestas personalizadas
 def is_greeting(text):
@@ -190,34 +218,6 @@ def display_examples():
             if st.button(ejemplo["texto"], key=f"ejemplo_{idx}", help=ejemplo["prompt"]):
                 state.prompt = ejemplo["prompt"]
                 st.rerun()
-
-# Cargar variables de entorno
-load_dotenv()
-GOOGLE_API_KEY=os.environ.get('GOOGLE_API_KEY')
-genai.configure(api_key=GOOGLE_API_KEY)
-
-# Configuración de la aplicación
-new_chat_id = f'{time.time()}'
-MODEL_ROLE = 'model'
-USER_AVATAR_ICON = '👤'
-AI_AVATAR_ICON = '🤖'
-
-# Crear directorio de datos si no existe
-os.makedirs('data', exist_ok=True)
-
-# Cargar historial de chats pasados
-try:
-    past_chats = joblib.load('data/past_chats_list')
-except:
-    past_chats = {}
-
-# Configuración de la página
-st.set_page_config(
-    page_title="RoboCopy - Reels Creator",
-    page_icon="🎬",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
 # Inicializar el sistema de prompt
 system_prompt = get_reels_script_prompt()
