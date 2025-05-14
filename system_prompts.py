@@ -133,6 +133,13 @@ Antes de entregar, asegúrate de que el guión:
 NO uses emojis, signos innecesarios ni adornos. Mantén el guión humano, natural y directo.
 """
 
+def get_reels_prompt():
+    """
+    Devuelve el prompt completo para la creación de guiones de Reels.
+    """
+    discovery_questions = get_discovery_questions()
+    return get_formulas_options_and_examples()
+
 # Mantener compatibilidad con código existente
 def get_unified_reels_prompt():
     """
