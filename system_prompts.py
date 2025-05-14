@@ -1,5 +1,5 @@
 # Prompt unificado para RoboCopy
-from reels_formulas import reels_formulas # Modificado para importar reels_formulas
+from reels_formulas import reels_formulas
 
 def get_discovery_questions():
     """
@@ -12,9 +12,9 @@ def get_discovery_questions():
         "¿Qué acción específica quieres que realicen los espectadores después de ver tu Reel? (Comprar, registrarse, seguirte, etc.)"
     ]
 
-def get_reels_script_prompt():
+def get_formulas_options_and_examples():
     """
-    Devuelve el prompt del sistema para la creación de guiones de Reels.
+    Procesa las fórmulas disponibles y genera opciones y ejemplos formatados.
     """
     # Obtener las fórmulas de Reels disponibles
     formulas_disponibles = list(reels_formulas.keys())
@@ -42,12 +42,21 @@ def get_reels_script_prompt():
             ejemplos_formulas += f"- Problema/Tema: {ejemplo.get('problema', 'No especificado')}\n"
             ejemplos_formulas += f"- Guion Ejemplo:\n```\n{ejemplo.get('script', 'No disponible')}\n```\n"
     
+    return opciones_formulas, ejemplos_formulas
+
+def get_reels_prompt():
+    """
+    Función única para generar prompts de Reels.
+    Utiliza exclusivamente la versión original (más detallada).
+    """
+    # Obtener opciones y ejemplos de fórmulas
+    opciones_formulas, ejemplos_formulas = get_formulas_options_and_examples()
+    
     # Obtener las preguntas de descubrimiento
     discovery_questions = get_discovery_questions()
-    preguntas_formateadas = "\n".join([f"{i+1}. {q}" for i, q in enumerate(discovery_questions)])
     
-    # Construir el prompt base para RoboCopy
-    prompt_base = f"""You are RoboCopy, a strategic and empathetic assistant whose sole mission is to help the user create engaging and effective Instagram/Facebook Reel scripts. You represent a team trained by masters of viral content, storytelling, and audience engagement — inspired by the principles of top copywriters and content creators like Gary Halbert, Gary Bencivenga, and David Ogilvy, adapted for the fast-paced, visual world of social media video.
+    # Versión original del prompt (más detallada)
+    return f"""You are RoboCopy, a strategic and empathetic assistant whose sole mission is to help the user create engaging and effective Instagram/Facebook Reel scripts. You represent a team trained by masters of viral content, storytelling, and audience engagement — inspired by the principles of top copywriters and content creators like Gary Halbert, Gary Bencivenga, and David Ogilvy, adapted for the fast-paced, visual world of social media video.
 
 IMPORTANTE: Todas tus respuestas deben ser en español. Siempre comunícate con el usuario en español y genera los guiones para Reels en español.
 
@@ -118,11 +127,21 @@ Ejemplos de guiones para inspirarte:
 
 NO uses emojis excesivos en el guion final ni adornos innecesarios. Manténlo profesional, humano y directo.
 """
-    
-    return prompt_base
+
+# Mantener compatibilidad con código existente
+def get_unified_reels_prompt():
+    """
+    Función de compatibilidad que devuelve el prompt de Reels.
+    """
+    return get_reels_prompt()
+
+def get_reels_script_prompt():
+    """
+    Función de compatibilidad que devuelve el prompt de Reels.
+    """
+    return get_reels_prompt()
 
 # Si necesitas probar la función (esto no se ejecutará en producción normalmente):
 # if __name__ == '__main__':
-#     prompt_para_reels = get_reels_script_prompt()
+#     prompt_para_reels = get_reels_prompt()
 #     print(prompt_para_reels)
-
