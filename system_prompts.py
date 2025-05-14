@@ -12,11 +12,15 @@ def get_discovery_questions():
         "¿Qué acción específica quieres que realicen los espectadores después de ver tu Reel? (Comprar, registrarse, seguirte, etc.)"
     ]
 
-def get_formulas_options_and_examples():
+def get_formulas_options_and_examples(discovery_questions=None):
     """
     Procesa las fórmulas disponibles y genera opciones y ejemplos formatados.
     """
     formulas_disponibles = list(reels_formulas.keys())
+    
+    # Si no se proporcionan preguntas, obtenerlas
+    if discovery_questions is None:
+        discovery_questions = get_discovery_questions()
     
     # Crear la lista de opciones para el usuario
     opciones_formulas = ""
@@ -138,7 +142,7 @@ def get_reels_prompt():
     Devuelve el prompt completo para la creación de guiones de Reels.
     """
     discovery_questions = get_discovery_questions()
-    return get_formulas_options_and_examples()
+    return get_formulas_options_and_examples(discovery_questions)
 
 # Mantener compatibilidad con código existente
 def get_unified_reels_prompt():
