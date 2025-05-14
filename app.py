@@ -96,9 +96,12 @@ def handle_chat_title(prompt):
 def get_enhanced_prompt(prompt, is_example):
     """Genera el prompt mejorado según el tipo de mensaje"""
     if is_greeting(prompt):
-        return f"El usuario te ha saludado con '{prompt}'. Preséntate brevemente, explica qué es un guion de Reel en 1-2 líneas, y haz 1-2 preguntas iniciales para comenzar a crear el guion de Reel del usuario (como cuál es su nicho o a qué audiencia se dirige). Sé amigable, breve y toma la iniciativa como el experto que eres."
+        return f"El usuario te ha saludado con '{prompt}'. Preséntate brevemente (máximo 2 líneas), explica qué es un guion de Reel en 1 línea, y haz SOLO 1 pregunta inicial para comenzar a crear el guion. Sé extremadamente conciso."
     elif is_example:
-        return f"El usuario ha seleccionado un ejemplo: '{prompt}'. Responde de manera conversacional y sencilla, como si estuvieras hablando con un amigo. Evita tecnicismos innecesarios. Enfócate en dar información práctica que ayude al usuario a crear su guion de Reel. Usa ejemplos concretos cuando sea posible. Termina tu respuesta con una pregunta que invite al usuario a compartir información sobre su nicho o audiencia para poder ayudarle a crear su guion de Reel personalizado."
+        return f"El usuario ha seleccionado un ejemplo: '{prompt}'. Responde de manera breve y directa en máximo 3-4 líneas. Evita explicaciones largas. Termina con una única pregunta concreta."
+    else:
+        # Para conversaciones normales, añadir instrucción de brevedad
+        return prompt + " [IMPORTANTE: Responde de forma breve y concisa. Máximo 3-5 líneas. Si necesitas hacer preguntas, limítalas a 1-2 preguntas clave. Evita listas largas de opciones.]"
     return prompt
 
 def process_model_response(enhanced_prompt):
