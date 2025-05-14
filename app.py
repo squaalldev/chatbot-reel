@@ -4,8 +4,8 @@ import joblib
 import streamlit as st
 import google.generativeai as genai
 from dotenv import load_dotenv
-from puv_formulas import puv_formulas
-from system_prompts import get_unified_puv_prompt
+from reels_formulas import reels_formulas
+from system_prompts import get_reels_script_prompt
 from session_state import SessionState
 
 # Inicializar el estado de la sesión
@@ -68,9 +68,9 @@ def handle_chat_title(prompt):
 def get_enhanced_prompt(prompt, is_example):
     """Genera el prompt mejorado según el tipo de mensaje"""
     if is_greeting(prompt):
-        return f"El usuario te ha saludado con '{prompt}'. Preséntate brevemente, explica qué es una PUV en 1-2 líneas, y haz 1-2 preguntas iniciales para comenzar a crear la PUV del usuario (como a quién se dirige su producto/servicio o qué ofrece). Sé amigable, breve y toma la iniciativa como el experto que eres."
+        return f"El usuario te ha saludado con '{prompt}'. Preséntate brevemente, explica qué es un guion de Reel en 1-2 líneas, y haz 1-2 preguntas iniciales para comenzar a crear el guion de Reel del usuario (como cuál es su nicho o a qué audiencia se dirige). Sé amigable, breve y toma la iniciativa como el experto que eres."
     elif is_example:
-        return f"El usuario ha seleccionado un ejemplo: '{prompt}'. Responde de manera conversacional y sencilla, como si estuvieras hablando con un amigo. Evita tecnicismos innecesarios. Enfócate en dar información práctica que ayude al usuario a crear su PUV. Usa ejemplos concretos cuando sea posible. Termina tu respuesta con una pregunta que invite al usuario a compartir información sobre su negocio para poder ayudarle a crear su PUV personalizada."
+        return f"El usuario ha seleccionado un ejemplo: '{prompt}'. Responde de manera conversacional y sencilla, como si estuvieras hablando con un amigo. Evita tecnicismos innecesarios. Enfócate en dar información práctica que ayude al usuario a crear su guion de Reel. Usa ejemplos concretos cuando sea posible. Termina tu respuesta con una pregunta que invite al usuario a compartir información sobre su nicho o audiencia para poder ayudarle a crear su guion de Reel personalizado."
     return prompt
 
 def process_model_response(enhanced_prompt):
@@ -151,10 +151,10 @@ def display_initial_header():
         """, unsafe_allow_html=True)
         st.image("robocopy_logo.png", width=300, use_container_width=True)
         
-        # Título con diseño responsivo (eliminado el símbolo ∞)
+        # Título con diseño responsivo
         st.markdown("""
             <div style='text-align: center; margin-top: -35px; width: 100%;'>
-                <h1 class='robocopy-title' style='width: 100%; text-align: center; color: white !important; font-size: clamp(2.5em, 5vw, 4em); line-height: 1.2;'>PUV Creator</h1>
+                <h1 class='robocopy-title' style='width: 100%; text-align: center; color: white !important; font-size: clamp(2.5em, 5vw, 4em); line-height: 1.2;'>Reels Creator</h1>
             </div>
         """, unsafe_allow_html=True)
         
@@ -169,7 +169,7 @@ def display_initial_header():
     st.markdown("""
         <div style='text-align: center; width: 100%;'>
             <p style='font-size: 16px; background-color: transparent; padding: 12px; border-radius: 8px; margin-top: -20px; color: white; width: 100%; text-align: center;'>
-                🎯 Experto en crear Propuestas de Valor Únicas que convierten audiencia en clientes
+                🎬 Experto en crear guiones de Reels virales para Instagram y Facebook
             </p>
         </div>
     """, unsafe_allow_html=True)
@@ -177,10 +177,10 @@ def display_initial_header():
 # Función para mostrar ejemplos de preguntas
 def display_examples():
     ejemplos = [
-        {"texto": "¿Qué es una Propuesta de Valor Única? 🎯", "prompt": "Explícame qué es una Propuesta de Valor Única (PUV) y por qué es importante para mi negocio"},
-        {"texto": "¿Cómo puedo crear mi PUV? 📝", "prompt": "Guíame paso a paso en el proceso de crear una Propuesta de Valor Única efectiva"},
-        {"texto": "¿Qué elementos debe tener mi PUV? ✨", "prompt": "¿Cuáles son los elementos esenciales que debe incluir una Propuesta de Valor Única exitosa?"},
-        {"texto": "¿Cuál es la mejor fórmula para mi caso? 🤔", "prompt": "Ayúdame a elegir la fórmula más adecuada para mi Propuesta de Valor según mi tipo de negocio"}
+        {"texto": "¿Qué es un Reel efectivo? 🎬", "prompt": "Explícame qué es un Reel efectivo y por qué es importante para mi estrategia de redes sociales"},
+        {"texto": "¿Cómo puedo crear mi guion de Reel? 📝", "prompt": "Guíame paso a paso en el proceso de crear un guion de Reel efectivo"},
+        {"texto": "¿Qué elementos debe tener mi Reel? ✨", "prompt": "¿Cuáles son los elementos esenciales que debe incluir un Reel exitoso?"},
+        {"texto": "¿Cuál es la mejor fórmula para mi caso? 🤔", "prompt": "Ayúdame a elegir la fórmula más adecuada para mi guion de Reel según mi nicho"}
     ]
 
     # Crear los botones de ejemplo
@@ -198,82 +198,95 @@ genai.configure(api_key=GOOGLE_API_KEY)
 
 # Configuración de la aplicación
 new_chat_id = f'{time.time()}'
-MODEL_ROLE = 'ai'
-AI_AVATAR_ICON = '🤖'  # Cambia el emoji por uno de robot para coincidir con tu logo
-USER_AVATAR_ICON = '👤'  # Añade un avatar para el usuario
+MODEL_ROLE = 'model'
+USER_AVATAR_ICON = '👤'
+AI_AVATAR_ICON = '🤖'
 
-# Crear carpeta de datos si no existe
-try:
-    os.mkdir('data/')
-except:
-    # data/ folder already exists
-    pass
+# Crear directorio de datos si no existe
+os.makedirs('data', exist_ok=True)
 
-# Cargar chats anteriores
+# Cargar historial de chats pasados
 try:
-    past_chats: dict = joblib.load('data/past_chats_list')
+    past_chats = joblib.load('data/past_chats_list')
 except:
     past_chats = {}
 
-# Sidebar para seleccionar chats anteriores
+# Configuración de la página
+st.set_page_config(
+    page_title="RoboCopy - Reels Creator",
+    page_icon="🎬",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Inicializar el sistema de prompt
+system_prompt = get_reels_script_prompt()
+
+# Inicializar el modelo si no está inicializado
+if state.model is None:
+    state.initialize_model()
+    state.initialize_chat()
+
+# Sidebar para navegación y opciones
 with st.sidebar:
-    st.write('# Chats Anteriores')
-    if state.chat_id is None:
-        state.chat_id = st.selectbox(
-            label='Selecciona un chat anterior',
-            options=[new_chat_id] + list(past_chats.keys()),
-            format_func=lambda x: past_chats.get(x, 'Nuevo Chat'),
-            placeholder='_',
-        )
-    else:
-        # This will happen the first time AI response comes in
-        state.chat_id = st.selectbox(
-            label='Selecciona un chat anterior',
-            options=[new_chat_id, state.chat_id] + list(past_chats.keys()),
-            index=1,
-            format_func=lambda x: past_chats.get(x, 'Nuevo Chat' if x != state.chat_id else state.chat_title),
-            placeholder='_',
-        )
-    # Save new chats after a message has been sent to AI
-    state.chat_title = f'SesiónChat-{state.chat_id}'
-
-# Cargar historial del chat
-state.load_chat_history()
-
-# Inicializar el modelo y el chat
-state.initialize_model('gemini-2.0-flash')
-state.initialize_chat()  # Siempre inicializar el chat después del modelo
-
-# Mostrar mensajes del historial
-for message in state.messages:
-    with st.chat_message(
-        name=message['role'],
-        avatar=message.get('avatar'),
-    ):
-        st.markdown(message['content'])
-
-# Mensaje inicial del sistema si es un chat nuevo
-if not state.has_messages():
-    # Mostrar la carátula inicial con el logo centrado
-    display_initial_header()
+    st.markdown("## 🎬 RoboCopy - Reels Creator")
+    st.markdown("---")
     
-    # Mostrar los ejemplos
-    display_examples()
+    # Botón para nueva conversación
+    if st.button("🆕 Nueva Conversación", use_container_width=True):
+        state.chat_id = new_chat_id
+        state.messages = []
+        state.gemini_history = []
+        state.initialize_chat()
+        st.rerun()
+    
+    # Selector de chats pasados
+    st.markdown("### 💬 Conversaciones Pasadas")
+    
+    # Mostrar chats pasados en orden inverso (más recientes primero)
+    past_chat_ids = list(past_chats.keys())
+    past_chat_ids.sort(reverse=True)
+    
+    for chat_id in past_chat_ids:
+        chat_title = past_chats[chat_id]
+        if st.button(f"📝 {chat_title}", key=f"chat_{chat_id}", use_container_width=True):
+            state.chat_id = chat_id
+            state.load_chat_history(chat_id)
+            state.initialize_chat(state.gemini_history)
+            st.rerun()
+    
+    # Información adicional
+    st.markdown("---")
+    st.markdown("### ℹ️ Información")
+    st.markdown("""
+    **RoboCopy - Reels Creator** te ayuda a crear guiones efectivos para tus Reels de Instagram y Facebook.
+    
+    Simplemente describe tu nicho, audiencia y objetivo, y te ayudaremos a crear un guion optimizado para generar engagement.
+    """)
 
-    # Inicializar el chat con el prompt unificado
-    system_prompt = get_unified_puv_prompt()
-    if state.chat is not None:  # Verificación adicional de seguridad
-        state.chat.send_message(system_prompt)
-    else:
-        st.error("Error: No se pudo inicializar el chat correctamente.")
+# Contenido principal
+if state.chat_id is None:
+    state.chat_id = new_chat_id
 
-# Procesar entrada del usuario
-if prompt := st.chat_input('Describe tu producto/servicio y audiencia objetivo...'):
-    process_message(prompt, is_example=False)
+# Mostrar la carátula inicial
+display_initial_header()
 
-# Procesar ejemplos seleccionados
+# Mostrar ejemplos de preguntas
+st.markdown("### 💡 Ejemplos de preguntas para comenzar:")
+display_examples()
+
+# Mostrar historial de mensajes
+for message in state.messages:
+    with st.chat_message(message["role"], avatar=message.get("avatar")):
+        st.markdown(message["content"])
+
+# Procesar el prompt si existe
 if state.has_prompt():
     prompt = state.prompt
-    process_message(prompt, is_example=True)
-    # Limpiar el prompt
     state.clear_prompt()
+    process_message(prompt, is_example=True)
+
+# Input para nuevo mensaje
+user_input = st.chat_input("Escribe tu mensaje aquí...")
+if user_input:
+    process_message(user_input)
