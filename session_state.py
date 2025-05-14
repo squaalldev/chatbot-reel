@@ -118,7 +118,16 @@ class SessionState:
         if self.model is None:
             self.initialize_model()
             
-        # Inicializar el chat sin generation_config
+        # Inicializar el chat con instrucciones específicas para hablar en segunda persona
+        system_instruction = """
+        IMPORTANTE: Siempre habla en segunda persona, dirigiéndote al usuario. 
+        NUNCA hables en primera persona como si fueras tú quien crea el Reel.
+        Recuerda que estás ayudando al usuario a crear SU guion, no estás creando un guion para ti mismo.
+        NUNCA uses frases como "Mi audiencia objetivo", "Mi producto", "Mi servicio", etc. 
+        En su lugar, usa "Tu audiencia objetivo", "Tu producto", "Tu servicio", etc.
+        """
+        
+        # Inicializar el chat con las instrucciones
         self.chat = self.model.start_chat(history=history)
         
         # Verificar que el chat se inicializó correctamente

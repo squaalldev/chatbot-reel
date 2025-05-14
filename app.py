@@ -119,7 +119,7 @@ def get_enhanced_prompt(prompt, is_example):
         elif "acción" in prompt.lower() or "cta" in prompt.lower() or "comprar" in prompt.lower() or "registrarse" in prompt.lower() or "seguir" in prompt.lower():
             # Si el usuario respondió sobre la acción/CTA, proceder a la creación del guion
             system_prompt = get_reels_script_prompt()
-            return f"Gracias por toda la información proporcionada. Ahora procederé a crear un guion de Reel efectivo basado en tus respuestas. {system_prompt}"
+            return f"Gracias por toda la información proporcionada. Ahora vamos a crear un guion de Reel efectivo basado en tus respuestas. {system_prompt}"
         else:
             # Si no se puede determinar en qué parte del proceso estamos, hacer la primera pregunta
             return f"Para crear un guion de Reel efectivo, necesito hacerte algunas preguntas clave. Empecemos: {discovery_questions[0]}"
