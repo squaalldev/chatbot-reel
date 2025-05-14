@@ -16,47 +16,30 @@ def get_formulas_options_and_examples():
     """
     Procesa las fórmulas disponibles y genera opciones y ejemplos formatados.
     """
-    # Obtener las fórmulas de Reels disponibles
     formulas_disponibles = list(reels_formulas.keys())
     
     # Crear la lista de opciones para el usuario
     opciones_formulas = ""
     for i, formula_nombre in enumerate(formulas_disponibles, 1):
         formula_data = reels_formulas[formula_nombre]
-        # Extraer una breve descripción de cada fórmula de Reel
         descripcion_completa = formula_data.get("description", "Descripción no disponible.")
         descripcion_breve = descripcion_completa.split('\n')[0].strip()
-        if not descripcion_breve and len(descripcion_completa.split('\n')) > 1: # Si la primera línea está vacía, tomar la segunda.
+        if not descripcion_breve and len(descripcion_completa.split('\n')) > 1:
             descripcion_breve = descripcion_completa.split('\n')[1].strip()
-
         opciones_formulas += f"{i}. {formula_nombre}: {descripcion_breve}\n"
     
     # Añadir ejemplos específicos para cada fórmula de Reel
     ejemplos_formulas = ""
     for formula_nombre, datos_formula in reels_formulas.items():
         if "examples" in datos_formula and len(datos_formula["examples"]) > 0:
-            # Tomar el primer ejemplo de cada fórmula
             ejemplo = datos_formula["examples"][0]
             ejemplos_formulas += f"\n**Ejemplo de Guion con {formula_nombre}:**\n"
             ejemplos_formulas += f"- Nicho: {ejemplo.get('nicho', 'No especificado')}\n"
             ejemplos_formulas += f"- Problema/Tema: {ejemplo.get('problema', 'No especificado')}\n"
             ejemplos_formulas += f"- Guion Ejemplo:\n```\n{ejemplo.get('script', 'No disponible')}\n```\n"
     
-    return opciones_formulas, ejemplos_formulas
-
-def get_reels_prompt():
-    """
-    Función única para generar prompts de Reels.
-    Utiliza exclusivamente la versión original (más detallada).
-    """
-    # Obtener opciones y ejemplos de fórmulas
-    opciones_formulas, ejemplos_formulas = get_formulas_options_and_examples()
-    
-    # Obtener las preguntas de descubrimiento
-    discovery_questions = get_discovery_questions()
-    
-    # Versión original del prompt (más detallada)
-    return f"""You are RoboCopy, a strategic and empathetic assistant whose sole mission is to help the user create engaging and effective Instagram/Facebook Reel scripts. You represent a team trained by masters of viral content, storytelling, and audience engagement — inspired by the principles of top copywriters and content creators like Gary Halbert, Gary Bencivenga, and David Ogilvy, adapted for the fast-paced, visual world of social media video.
+    # Construir el prompt para RoboCopy
+    return f"""Eres RoboCopy, un asistente estratégico especializado en crear guiones virales para Reels de Instagram y Facebook. Tu misión es ayudar al usuario a crear guiones efectivos que generen engagement.
 
 IMPORTANTE: Todas tus respuestas deben ser en español. Siempre comunícate con el usuario en español y genera los guiones para Reels en español.
 
@@ -122,10 +105,32 @@ Basado en tu análisis interno (que nunca mostrarás al usuario), crea un guion 
 - Incluya una llamada a la acción clara
 - Sea visualmente imaginable y adecuado para Reels
 
+Si el usuario no indica cuántos guiones quiere, crea 3.
+
+IMPORTANTE: Presenta los guiones SOLO con numeración (1., 2., 3.), sin explicaciones ni etiquetas.
+
+Ejemplo de formato:
+
+1. [Texto completo del Reel aquí.]
+
+2. [Texto completo del Reel aquí.]
+
+3. [Texto completo del Reel aquí.]
+
 Ejemplos de guiones para inspirarte:
 {ejemplos_formulas}
 
-NO uses emojis excesivos en el guion final ni adornos innecesarios. Manténlo profesional, humano y directo.
+---
+
+### ✅ VALIDACIÓN FINAL
+
+Antes de entregar, asegúrate de que el guión:
+- Tiene un gancho claro al inicio.
+- Muestra una transformación.
+- Conecta con un dolor o deseo emocional.
+- Termina con una acción específica o frase memorable.
+
+NO uses emojis, signos innecesarios ni adornos. Mantén el guión humano, natural y directo.
 """
 
 # Mantener compatibilidad con código existente
@@ -140,8 +145,3 @@ def get_reels_script_prompt():
     Función de compatibilidad que devuelve el prompt de Reels.
     """
     return get_reels_prompt()
-
-# Si necesitas probar la función (esto no se ejecutará en producción normalmente):
-# if __name__ == '__main__':
-#     prompt_para_reels = get_reels_prompt()
-#     print(prompt_para_reels)
