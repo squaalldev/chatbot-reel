@@ -105,7 +105,7 @@ class SessionState:
         """Limpia el prompt del estado de la sesión"""
         self.prompt = None
     
-    def initialize_model(self, model_name='gemini-2.0-flash'):
+    def initialize_model(self, model_name='gemini-3.1-flash-lite-preview'):
         """Inicializa el modelo de IA"""
         self.model = genai.GenerativeModel(model_name)
     
@@ -150,7 +150,7 @@ class SessionState:
                 }
             )
     
-    def generate_chat_title(self, prompt, model_name='gemini-2.0-flash'):
+    def generate_chat_title(self, prompt, model_name='gemini-3.1-flash-lite-preview'):
         """Genera un título para el chat basado en el primer mensaje"""
         try:
             title_generator = genai.GenerativeModel(model_name)
