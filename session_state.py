@@ -3,6 +3,8 @@ import joblib
 import google.generativeai as genai
 
 DEFAULT_GEMINI_MODEL = 'gemini-3.1-flash-lite-preview'
+DATA_DIR = 'data'
+PAST_CHATS_LIST_PATH = f'{DATA_DIR}/past_chats_list'
 
 class SessionState:
     """
@@ -170,8 +172,8 @@ class SessionState:
         if chat_id is None:
             chat_id = self.chat_id
         
-        joblib.dump(self.messages, f'data/{chat_id}-st_messages')
-        joblib.dump(self.gemini_history, f'data/{chat_id}-gemini_messages')
+        joblib.dump(self.messages, self._st_messages_path(chat_id))
+        joblib.dump(self.gemini_history, self._gemini_messages_path(chat_id))
     
     def load_chat_history(self, chat_id=None):
         """Carga el historial del chat"""
@@ -179,13 +181,19 @@ class SessionState:
             chat_id = self.chat_id
         
         try:
-            self.messages = joblib.load(f'data/{chat_id}-st_messages')
-            self.gemini_history = joblib.load(f'data/{chat_id}-gemini_messages')
+            self.messages = joblib.load(self._st_messages_path(chat_id))
+            self.gemini_history = joblib.load(self._gemini_messages_path(chat_id))
             return True
         except (FileNotFoundError, EOFError):
             self.messages = []
             self.gemini_history = []
             return False
+
+    def _st_messages_path(self, chat_id):
+        return f'{DATA_DIR}/{chat_id}-st_messages'
+
+    def _gemini_messages_path(self, chat_id):
+        return f'{DATA_DIR}/{chat_id}-gemini_messages'
     
     def has_messages(self):
         """Verifica si hay mensajes en el historial"""

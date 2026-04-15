@@ -5,7 +5,12 @@ import streamlit as st
 import google.generativeai as genai
 from dotenv import load_dotenv
 from system_prompts import get_unified_reel_prompt  # Cambiar de get_unified_puv_prompt a get_unified_reel_prompt
-from session_state import SessionState, DEFAULT_GEMINI_MODEL
+from session_state import (
+    SessionState,
+    DEFAULT_GEMINI_MODEL,
+    DATA_DIR,
+    PAST_CHATS_LIST_PATH,
+)
 
 # Inicializar el estado de la sesión
 state = SessionState()
@@ -62,7 +67,7 @@ def handle_chat_title(prompt):
         past_chats[state.chat_id] = state.chat_title
     else:
         state.chat_title = past_chats[state.chat_id]
-    joblib.dump(past_chats, 'data/past_chats_list')
+    joblib.dump(past_chats, PAST_CHATS_LIST_PATH)
 
 def get_enhanced_prompt(prompt, is_example):
     """Genera el prompt mejorado según el tipo de mensaje"""
@@ -187,14 +192,14 @@ USER_AVATAR_ICON = '👤'  # Añade un avatar para el usuario
 
 # Crear carpeta de datos si no existe
 try:
-    os.mkdir('data/')
+    os.mkdir(DATA_DIR)
 except FileExistsError:
     # data/ folder already exists
     pass
 
 # Cargar chats anteriores
 try:
-    past_chats: dict = joblib.load('data/past_chats_list')
+    past_chats: dict = joblib.load(PAST_CHATS_LIST_PATH)
 except (FileNotFoundError, EOFError):
     past_chats = {}
 
