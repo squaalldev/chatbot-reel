@@ -4,7 +4,6 @@ import joblib
 import streamlit as st
 import google.generativeai as genai
 from dotenv import load_dotenv
-from reel_formulas import reel_formulas  # Cambiar de puv_formulas a reel_formulas
 from system_prompts import get_unified_reel_prompt  # Cambiar de get_unified_puv_prompt a get_unified_reel_prompt
 from session_state import SessionState, DEFAULT_GEMINI_MODEL
 
@@ -72,25 +71,6 @@ def get_enhanced_prompt(prompt, is_example):
     elif is_example:
         return f"El usuario ha seleccionado un ejemplo: '{prompt}'. Responde de manera conversacional y sencilla, como si estuvieras hablando con un amigo. Evita tecnicismos innecesarios. Enfócate en dar información práctica que ayude al usuario a crear su Reel. Usa ejemplos concretos cuando sea posible. Termina tu respuesta con una pregunta que invite al usuario a compartir información sobre su negocio para poder ayudarle a crear su Reel personalizado."
     return prompt
-
-def process_model_response(enhanced_prompt):
-    """Procesa la respuesta del modelo"""
-    with st.chat_message(MODEL_ROLE, avatar=AI_AVATAR_ICON):
-        try:
-            message_placeholder = st.empty()
-            typing_indicator = st.empty()
-            typing_indicator.markdown("*Generando respuesta...*")
-            
-            response = state.send_message(enhanced_prompt)
-            full_response = stream_response(response, message_placeholder, typing_indicator)
-            
-            # Actualizar historial
-            state.add_message(role=MODEL_ROLE, content=full_response, avatar=AI_AVATAR_ICON)
-            state.gemini_history = state.chat.history
-            state.save_chat_history()
-            
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
 
 def stream_response(response, message_placeholder, typing_indicator):
     """Maneja el streaming de la respuesta"""

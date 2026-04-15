@@ -1,5 +1,4 @@
 import streamlit as st
-import time
 import joblib
 import google.generativeai as genai
 
@@ -33,7 +32,6 @@ class SessionState:
             
         if 'prompt' not in st.session_state:
             st.session_state.prompt = None
-        self.avatar_analysis = AvatarAnalysis()
     
     # Getters y setters para cada propiedad
     @property
@@ -196,31 +194,3 @@ class SessionState:
     def has_prompt(self):
         """Verifica si hay un prompt en el estado de la sesión"""
         return self.prompt is not None and self.prompt.strip() != ""
-
-
-class AvatarAnalysis:
-    def __init__(self):
-        self.basic_profile = {
-            "who": None,
-            "what": None,
-            "age": None
-        }
-        self.main_pain = None
-        self.main_desire = None
-        self.obstacles = None
-        self.motivations = None
-        
-    def update_profile(self, key, value):
-        if key in self.basic_profile:
-            self.basic_profile[key] = value
-
-    def save_avatar_analysis(self):
-        """Guarda el análisis del avatar en el historial"""
-        analysis_data = {
-            'avatar_analysis': self.avatar_analysis.__dict__
-        }
-        # Guardar junto con el historial del chat
-        
-    def load_avatar_analysis(self):
-        """Carga el análisis del avatar del historial"""
-        # Cargar junto con el historial del chat
