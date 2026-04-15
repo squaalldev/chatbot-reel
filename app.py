@@ -184,12 +184,14 @@ def display_examples():
     ]
 
     # Crear los botones de ejemplo
+    selected_prompt = None
     cols = st.columns(4)
     for idx, ejemplo in enumerate(ejemplos):
         with cols[idx]:
             if st.button(ejemplo["texto"], key=f"ejemplo_{idx}", help=ejemplo["prompt"]):
-                state.prompt = ejemplo["prompt"]
-                st.rerun()
+                selected_prompt = ejemplo["prompt"]
+
+    return selected_prompt
 
 # Cargar variables de entorno
 load_dotenv()
@@ -273,18 +275,21 @@ if (
     else:
         st.error("Error: No se pudo inicializar el chat correctamente.")
 
-# Mostrar menú inicial solo si no hay mensajes y no hay interacción activa
-if not state.has_messages() and not state.has_prompt() and not user_prompt:
-    display_initial_header()
-    display_examples()
+# Renderizar menú inicial en un contenedor limpiable
+initial_menu_container = st.container()
+selected_example_prompt = None
 
-# Procesar entrada del usuario
+if not state.has_messages() and not user_prompt:
+    with initial_menu_container:
+        display_initial_header()
+        selected_example_prompt = display_examples()
+
+# Procesar entrada del usuario (oculta el menú inmediatamente)
 if user_prompt:
+    initial_menu_container.empty()
     process_message(user_prompt, is_example=False)
 
-# Procesar ejemplos seleccionados
-if state.has_prompt():
-    prompt = state.prompt
-    process_message(prompt, is_example=True)
-    # Limpiar el prompt
-    state.clear_prompt()
+# Procesar ejemplo seleccionado (oculta el menú inmediatamente)
+if selected_example_prompt:
+    initial_menu_container.empty()
+    process_message(selected_example_prompt, is_example=True)
