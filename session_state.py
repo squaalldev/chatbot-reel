@@ -1,7 +1,12 @@
 import streamlit as st
-import time
 import joblib
-import google.generativeai as genai
+import os
+from google import genai
+from google.genai import types
+
+DEFAULT_GEMINI_MODEL = 'gemini-3.1-flash-lite-preview'
+DATA_DIR = 'data'
+PAST_CHATS_LIST_PATH = f'{DATA_DIR}/past_chats_list'
 
 class SessionState:
     """
@@ -25,13 +30,18 @@ class SessionState:
             
         if 'model' not in st.session_state:
             st.session_state.model = None
+
+        if 'client' not in st.session_state:
+            st.session_state.client = None
             
         if 'chat' not in st.session_state:
             st.session_state.chat = None
             
         if 'prompt' not in st.session_state:
             st.session_state.prompt = None
-        self.avatar_analysis = AvatarAnalysis()
+
+        if 'system_instruction' not in st.session_state:
+            st.session_state.system_instruction = None
     
     # Getters y setters para cada propiedad
     @property
@@ -73,6 +83,14 @@ class SessionState:
     @model.setter
     def model(self, value):
         st.session_state.model = value
+
+    @property
+    def client(self):
+        return st.session_state.client
+
+    @client.setter
+    def client(self, value):
+        st.session_state.client = value
     
     @property
     def chat(self):
@@ -89,6 +107,14 @@ class SessionState:
     @prompt.setter
     def prompt(self, value):
         st.session_state.prompt = value
+
+    @property
+    def system_instruction(self):
+        return st.session_state.system_instruction
+
+    @system_instruction.setter
+    def system_instruction(self, value):
+        st.session_state.system_instruction = value
     
     # Métodos de utilidad
     def add_message(self, role, content, avatar=None):
@@ -105,21 +131,38 @@ class SessionState:
         """Limpia el prompt del estado de la sesión"""
         self.prompt = None
     
-    def initialize_model(self, model_name='gemini-2.0-flash'):
+    def initialize_model(self, model_name=None, api_key=None):
         """Inicializa el modelo de IA"""
-        self.model = genai.GenerativeModel(model_name)
+        if model_name is None:
+            model_name = DEFAULT_GEMINI_MODEL
+        if api_key is None:
+            api_key = os.environ.get('GOOGLE_API_KEY')
+        self.client = genai.Client(api_key=api_key)
+        self.model = model_name
     
-    def initialize_chat(self, history=None):
+    def initialize_chat(self, history=None, system_instruction=None):
         """Inicializa el chat con el modelo"""
         if history is None:
             history = self.gemini_history
+        if system_instruction is None:
+            system_instruction = self.system_instruction
+        else:
+            self.system_instruction = system_instruction
         
         # Asegurar que el modelo está inicializado
-        if self.model is None:
+        if self.model is None or self.client is None:
             self.initialize_model()
-            
-        # Inicializar el chat sin generation_config
-        self.chat = self.model.start_chat(history=history)
+
+        chat_kwargs = {'model': self.model}
+        if history:
+            chat_kwargs['history'] = history
+        if system_instruction:
+            chat_kwargs['config'] = types.GenerateContentConfig(
+                system_instruction=system_instruction
+            )
+
+        # Inicializar chat con el SDK moderno
+        self.chat = self.client.chats.create(**chat_kwargs)
         
         # Verificar que el chat se inicializó correctamente
         if self.chat is None:
@@ -131,32 +174,37 @@ class SessionState:
             if self.chat is None:
                 self.initialize_chat()
                 
-            return self.chat.send_message(
-                prompt,
-                stream=stream,
-                generation_config={
-                    "temperature": 0.9
-                }
-            )
+            if stream:
+                return self.chat.send_message_stream(prompt)
+            return self.chat.send_message(prompt)
         except Exception as e:
             print(f"Error al enviar mensaje: {e}")
             # Reintentar una vez si hay error
             self.initialize_chat()
-            return self.chat.send_message(
-                prompt,
-                stream=stream,
-                generation_config={
-                    "temperature": 0.9
-                }
-            )
+            if stream:
+                return self.chat.send_message_stream(prompt)
+            return self.chat.send_message(prompt)
     
-    def generate_chat_title(self, prompt, model_name='gemini-2.0-flash'):
+    def generate_chat_title(self, prompt, model_name=None):
         """Genera un título para el chat basado en el primer mensaje"""
         try:
-            title_generator = genai.GenerativeModel(model_name)
-            title_response = title_generator.generate_content(
-                f"Genera un título corto (máximo 5 palabras) que describa de qué trata esta consulta, sin usar comillas ni puntuación: '{prompt}'")
-            return title_response.text.strip()
+            if model_name is None:
+                model_name = DEFAULT_GEMINI_MODEL
+            if self.client is None:
+                self.client = genai.Client(api_key=os.environ.get('GOOGLE_API_KEY'))
+            title_response = self.client.models.generate_content(
+                model=model_name,
+                contents=(
+                    "Genera un título natural y humano en español (3 a 6 palabras) "
+                    "que resuma esta consulta. No uses separadores tipo '|', no uses etiquetas, "
+                    "no uses comillas y evita formato robótico. Devuelve solo el título final: "
+                    f"'{prompt}'"
+                )
+            )
+            cleaned_title = " ".join(
+                title_response.text.strip().replace('"', '').replace('|', ' ').split()
+            )
+            return " ".join(cleaned_title.split()[:6])
         except Exception as e:
             print(f"Error al generar título: {e}")
             return None
@@ -166,8 +214,8 @@ class SessionState:
         if chat_id is None:
             chat_id = self.chat_id
         
-        joblib.dump(self.messages, f'data/{chat_id}-st_messages')
-        joblib.dump(self.gemini_history, f'data/{chat_id}-gemini_messages')
+        joblib.dump(self.messages, self._st_messages_path(chat_id))
+        joblib.dump(self.gemini_history, self._gemini_messages_path(chat_id))
     
     def load_chat_history(self, chat_id=None):
         """Carga el historial del chat"""
@@ -175,13 +223,19 @@ class SessionState:
             chat_id = self.chat_id
         
         try:
-            self.messages = joblib.load(f'data/{chat_id}-st_messages')
-            self.gemini_history = joblib.load(f'data/{chat_id}-gemini_messages')
+            self.messages = joblib.load(self._st_messages_path(chat_id))
+            self.gemini_history = joblib.load(self._gemini_messages_path(chat_id))
             return True
-        except:
+        except (FileNotFoundError, EOFError):
             self.messages = []
             self.gemini_history = []
             return False
+
+    def _st_messages_path(self, chat_id):
+        return f'{DATA_DIR}/{chat_id}-st_messages'
+
+    def _gemini_messages_path(self, chat_id):
+        return f'{DATA_DIR}/{chat_id}-gemini_messages'
     
     def has_messages(self):
         """Verifica si hay mensajes en el historial"""
@@ -190,31 +244,3 @@ class SessionState:
     def has_prompt(self):
         """Verifica si hay un prompt en el estado de la sesión"""
         return self.prompt is not None and self.prompt.strip() != ""
-
-
-class AvatarAnalysis:
-    def __init__(self):
-        self.basic_profile = {
-            "who": None,
-            "what": None,
-            "age": None
-        }
-        self.main_pain = None
-        self.main_desire = None
-        self.obstacles = None
-        self.motivations = None
-        
-    def update_profile(self, key, value):
-        if key in self.basic_profile:
-            self.basic_profile[key] = value
-
-    def save_avatar_analysis(self):
-        """Guarda el análisis del avatar en el historial"""
-        analysis_data = {
-            'avatar_analysis': self.avatar_analysis.__dict__
-        }
-        # Guardar junto con el historial del chat
-        
-    def load_avatar_analysis(self):
-        """Carga el análisis del avatar del historial"""
-        # Cargar junto con el historial del chat
