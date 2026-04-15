@@ -14,6 +14,10 @@ from session_state import (
 
 # Inicializar el estado de la sesión
 state = SessionState()
+STREAM_PRESETS = {
+    'Rápido': {'batch_size': 24, 'delay_seconds': 0.0},
+    'Cinemático': {'batch_size': 1, 'delay_seconds': 0.01},
+}
 
 # Función para detectar saludos y generar respuestas personalizadas
 def is_greeting(text):
@@ -47,7 +51,9 @@ def process_message(prompt, is_example=False):
             typing_indicator.markdown("*Generando respuesta...*")
             
             response = state.send_message(enhanced_prompt)
-            full_response = stream_response(response, message_placeholder, typing_indicator)
+            stream_mode = st.session_state.get('stream_mode', 'Rápido')
+            stream_settings = STREAM_PRESETS.get(stream_mode, STREAM_PRESETS['Rápido'])
+            full_response = stream_response(response, message_placeholder, typing_indicator, stream_settings)
             
             if full_response:
                 state.add_message(MODEL_ROLE, full_response, AI_AVATAR_ICON)
@@ -77,21 +83,33 @@ def get_enhanced_prompt(prompt, is_example):
         return f"El usuario ha seleccionado un ejemplo: '{prompt}'. Responde de manera conversacional y sencilla, como si estuvieras hablando con un amigo. Evita tecnicismos innecesarios. Enfócate en dar información práctica que ayude al usuario a crear su Reel. Usa ejemplos concretos cuando sea posible. Termina tu respuesta con una pregunta que invite al usuario a compartir información sobre su negocio para poder ayudarle a crear su Reel personalizado."
     return prompt
 
-def stream_response(response, message_placeholder, typing_indicator):
+def stream_response(response, message_placeholder, typing_indicator, stream_settings):
     """Maneja el streaming de la respuesta"""
     full_response = ''
+    batch_size = max(1, int(stream_settings.get('batch_size', 24)))
+    delay_seconds = max(0.0, float(stream_settings.get('delay_seconds', 0.0)))
+    pending_chars = 0
+
     try:
         for chunk in response:
             if chunk.text:
                 for ch in chunk.text:
                     full_response += ch
-                    time.sleep(0.01)
-                    typing_indicator.markdown("*Generando respuesta...*")
-                    message_placeholder.markdown(full_response + '▌')
+                    pending_chars += 1
+                    if pending_chars >= batch_size:
+                        if delay_seconds:
+                            time.sleep(delay_seconds)
+                        message_placeholder.markdown(full_response + '▌')
+                        pending_chars = 0
     except Exception as e:
         st.error(f"Error en el streaming: {str(e)}")
         return ''
-    
+
+    if pending_chars > 0:
+        if delay_seconds:
+            time.sleep(delay_seconds)
+        message_placeholder.markdown(full_response + '▌')
+
     typing_indicator.empty()
     message_placeholder.markdown(full_response)
     return full_response
@@ -206,6 +224,15 @@ except (FileNotFoundError, EOFError):
 # Sidebar para seleccionar chats anteriores
 with st.sidebar:
     st.write('# Chats Anteriores')
+    st.write('### Velocidad de respuesta')
+    st.session_state.stream_mode = st.radio(
+        label='Modo de streaming',
+        options=list(STREAM_PRESETS.keys()),
+        index=0 if st.session_state.get('stream_mode', 'Rápido') == 'Rápido' else 1,
+        horizontal=True,
+        label_visibility='collapsed',
+    )
+
     if state.chat_id is None:
         state.chat_id = st.selectbox(
             label='Selecciona un chat anterior',
