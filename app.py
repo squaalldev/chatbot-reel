@@ -173,7 +173,10 @@ def display_examples():
 
 # Cargar variables de entorno
 load_dotenv()
-GOOGLE_API_KEY=os.environ.get('GOOGLE_API_KEY')
+GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
+if not GOOGLE_API_KEY:
+    st.error("Falta la variable de entorno GOOGLE_API_KEY. Configúrala para continuar.")
+    st.stop()
 genai.configure(api_key=GOOGLE_API_KEY)
 
 # Configuración de la aplicación
@@ -185,14 +188,14 @@ USER_AVATAR_ICON = '👤'  # Añade un avatar para el usuario
 # Crear carpeta de datos si no existe
 try:
     os.mkdir('data/')
-except:
+except FileExistsError:
     # data/ folder already exists
     pass
 
 # Cargar chats anteriores
 try:
     past_chats: dict = joblib.load('data/past_chats_list')
-except:
+except (FileNotFoundError, EOFError):
     past_chats = {}
 
 # Sidebar para seleccionar chats anteriores

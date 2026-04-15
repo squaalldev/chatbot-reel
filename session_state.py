@@ -182,7 +182,7 @@ class SessionState:
             self.messages = joblib.load(f'data/{chat_id}-st_messages')
             self.gemini_history = joblib.load(f'data/{chat_id}-gemini_messages')
             return True
-        except:
+        except (FileNotFoundError, EOFError):
             self.messages = []
             self.gemini_history = []
             return False
