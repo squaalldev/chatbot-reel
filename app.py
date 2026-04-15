@@ -2,14 +2,18 @@ import time
 import os
 import joblib
 import streamlit as st
-import google.generativeai as genai
 from dotenv import load_dotenv
-from reel_formulas import reel_formulas  # Cambiar de puv_formulas a reel_formulas
 from system_prompts import get_unified_reel_prompt  # Cambiar de get_unified_puv_prompt a get_unified_reel_prompt
-from session_state import SessionState
+from session_state import (
+    SessionState,
+    DEFAULT_GEMINI_MODEL,
+    DATA_DIR,
+    PAST_CHATS_LIST_PATH,
+)
 
 # Inicializar el estado de la sesión
 state = SessionState()
+STREAM_SETTINGS = {'batch_size': 1, 'delay_seconds': 0.01}
 
 # Función para detectar saludos y generar respuestas personalizadas
 def is_greeting(text):
@@ -43,11 +47,14 @@ def process_message(prompt, is_example=False):
             typing_indicator.markdown("*Generando respuesta...*")
             
             response = state.send_message(enhanced_prompt)
-            full_response = stream_response(response, message_placeholder, typing_indicator)
+            full_response = stream_response(response, message_placeholder, typing_indicator, STREAM_SETTINGS)
             
             if full_response:
                 state.add_message(MODEL_ROLE, full_response, AI_AVATAR_ICON)
-                state.gemini_history = state.chat.history
+                if hasattr(state.chat, 'get_history'):
+                    state.gemini_history = state.chat.get_history()
+                else:
+                    state.gemini_history = getattr(state.chat, 'history', [])
                 state.save_chat_history()
                 
         except Exception as e:
@@ -63,7 +70,7 @@ def handle_chat_title(prompt):
         past_chats[state.chat_id] = state.chat_title
     else:
         state.chat_title = past_chats[state.chat_id]
-    joblib.dump(past_chats, 'data/past_chats_list')
+    joblib.dump(past_chats, PAST_CHATS_LIST_PATH)
 
 def get_enhanced_prompt(prompt, is_example):
     """Genera el prompt mejorado según el tipo de mensaje"""
@@ -73,40 +80,33 @@ def get_enhanced_prompt(prompt, is_example):
         return f"El usuario ha seleccionado un ejemplo: '{prompt}'. Responde de manera conversacional y sencilla, como si estuvieras hablando con un amigo. Evita tecnicismos innecesarios. Enfócate en dar información práctica que ayude al usuario a crear su Reel. Usa ejemplos concretos cuando sea posible. Termina tu respuesta con una pregunta que invite al usuario a compartir información sobre su negocio para poder ayudarle a crear su Reel personalizado."
     return prompt
 
-def process_model_response(enhanced_prompt):
-    """Procesa la respuesta del modelo"""
-    with st.chat_message(MODEL_ROLE, avatar=AI_AVATAR_ICON):
-        try:
-            message_placeholder = st.empty()
-            typing_indicator = st.empty()
-            typing_indicator.markdown("*Generando respuesta...*")
-            
-            response = state.send_message(enhanced_prompt)
-            full_response = stream_response(response, message_placeholder, typing_indicator)
-            
-            # Actualizar historial
-            state.add_message(role=MODEL_ROLE, content=full_response, avatar=AI_AVATAR_ICON)
-            state.gemini_history = state.chat.history
-            state.save_chat_history()
-            
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
-
-def stream_response(response, message_placeholder, typing_indicator):
+def stream_response(response, message_placeholder, typing_indicator, stream_settings):
     """Maneja el streaming de la respuesta"""
     full_response = ''
+    batch_size = max(1, int(stream_settings.get('batch_size', 24)))
+    delay_seconds = max(0.0, float(stream_settings.get('delay_seconds', 0.0)))
+    pending_chars = 0
+
     try:
         for chunk in response:
             if chunk.text:
                 for ch in chunk.text:
                     full_response += ch
-                    time.sleep(0.01)
-                    typing_indicator.markdown("*Generando respuesta...*")
-                    message_placeholder.markdown(full_response + '▌')
+                    pending_chars += 1
+                    if pending_chars >= batch_size:
+                        if delay_seconds:
+                            time.sleep(delay_seconds)
+                        message_placeholder.markdown(full_response + '▌')
+                        pending_chars = 0
     except Exception as e:
         st.error(f"Error en el streaming: {str(e)}")
         return ''
-    
+
+    if pending_chars > 0:
+        if delay_seconds:
+            time.sleep(delay_seconds)
+        message_placeholder.markdown(full_response + '▌')
+
     typing_indicator.empty()
     message_placeholder.markdown(full_response)
     return full_response
@@ -193,8 +193,10 @@ def display_examples():
 
 # Cargar variables de entorno
 load_dotenv()
-GOOGLE_API_KEY=os.environ.get('GOOGLE_API_KEY')
-genai.configure(api_key=GOOGLE_API_KEY)
+GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
+if not GOOGLE_API_KEY:
+    st.error("Falta la variable de entorno GOOGLE_API_KEY. Configúrala para continuar.")
+    st.stop()
 
 # Configuración de la aplicación
 new_chat_id = f'{time.time()}'
@@ -204,20 +206,21 @@ USER_AVATAR_ICON = '👤'  # Añade un avatar para el usuario
 
 # Crear carpeta de datos si no existe
 try:
-    os.mkdir('data/')
-except:
+    os.mkdir(DATA_DIR)
+except FileExistsError:
     # data/ folder already exists
     pass
 
 # Cargar chats anteriores
 try:
-    past_chats: dict = joblib.load('data/past_chats_list')
-except:
+    past_chats: dict = joblib.load(PAST_CHATS_LIST_PATH)
+except (FileNotFoundError, EOFError):
     past_chats = {}
 
 # Sidebar para seleccionar chats anteriores
 with st.sidebar:
     st.write('# Chats Anteriores')
+
     if state.chat_id is None:
         state.chat_id = st.selectbox(
             label='Selecciona un chat anterior',
@@ -241,7 +244,7 @@ with st.sidebar:
 state.load_chat_history()
 
 # Inicializar el modelo y el chat
-state.initialize_model('gemini-3.1-flash-lite-preview')
+state.initialize_model(DEFAULT_GEMINI_MODEL, api_key=GOOGLE_API_KEY)
 state.initialize_chat()  # Siempre inicializar el chat después del modelo
 
 # Mostrar mensajes del historial
