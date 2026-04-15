@@ -1,7 +1,8 @@
 import streamlit as st
-import time
 import joblib
 import google.generativeai as genai
+
+DEFAULT_GEMINI_MODEL = 'gemini-3.1-flash-lite-preview'
 
 class SessionState:
     """
@@ -31,7 +32,6 @@ class SessionState:
             
         if 'prompt' not in st.session_state:
             st.session_state.prompt = None
-        self.avatar_analysis = AvatarAnalysis()
     
     # Getters y setters para cada propiedad
     @property
@@ -105,8 +105,10 @@ class SessionState:
         """Limpia el prompt del estado de la sesión"""
         self.prompt = None
     
-    def initialize_model(self, model_name='gemini-2.0-flash'):
+    def initialize_model(self, model_name=None):
         """Inicializa el modelo de IA"""
+        if model_name is None:
+            model_name = DEFAULT_GEMINI_MODEL
         self.model = genai.GenerativeModel(model_name)
     
     def initialize_chat(self, history=None):
@@ -150,9 +152,11 @@ class SessionState:
                 }
             )
     
-    def generate_chat_title(self, prompt, model_name='gemini-2.0-flash'):
+    def generate_chat_title(self, prompt, model_name=None):
         """Genera un título para el chat basado en el primer mensaje"""
         try:
+            if model_name is None:
+                model_name = DEFAULT_GEMINI_MODEL
             title_generator = genai.GenerativeModel(model_name)
             title_response = title_generator.generate_content(
                 f"Genera un título corto (máximo 5 palabras) que describa de qué trata esta consulta, sin usar comillas ni puntuación: '{prompt}'")
@@ -178,7 +182,7 @@ class SessionState:
             self.messages = joblib.load(f'data/{chat_id}-st_messages')
             self.gemini_history = joblib.load(f'data/{chat_id}-gemini_messages')
             return True
-        except:
+        except (FileNotFoundError, EOFError):
             self.messages = []
             self.gemini_history = []
             return False
@@ -190,31 +194,3 @@ class SessionState:
     def has_prompt(self):
         """Verifica si hay un prompt en el estado de la sesión"""
         return self.prompt is not None and self.prompt.strip() != ""
-
-
-class AvatarAnalysis:
-    def __init__(self):
-        self.basic_profile = {
-            "who": None,
-            "what": None,
-            "age": None
-        }
-        self.main_pain = None
-        self.main_desire = None
-        self.obstacles = None
-        self.motivations = None
-        
-    def update_profile(self, key, value):
-        if key in self.basic_profile:
-            self.basic_profile[key] = value
-
-    def save_avatar_analysis(self):
-        """Guarda el análisis del avatar en el historial"""
-        analysis_data = {
-            'avatar_analysis': self.avatar_analysis.__dict__
-        }
-        # Guardar junto con el historial del chat
-        
-    def load_avatar_analysis(self):
-        """Carga el análisis del avatar del historial"""
-        # Cargar junto con el historial del chat
