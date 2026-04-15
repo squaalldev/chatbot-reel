@@ -194,9 +194,17 @@ class SessionState:
                 self.client = genai.Client(api_key=os.environ.get('GOOGLE_API_KEY'))
             title_response = self.client.models.generate_content(
                 model=model_name,
-                contents=f"Genera un título corto (máximo 5 palabras) que describa de qué trata esta consulta, sin usar comillas ni puntuación: '{prompt}'"
+                contents=(
+                    "Genera un título natural y humano en español (3 a 6 palabras) "
+                    "que resuma esta consulta. No uses separadores tipo '|', no uses etiquetas, "
+                    "no uses comillas y evita formato robótico. Devuelve solo el título final: "
+                    f"'{prompt}'"
+                )
             )
-            return title_response.text.strip()
+            cleaned_title = " ".join(
+                title_response.text.strip().replace('"', '').replace('|', ' ').split()
+            )
+            return " ".join(cleaned_title.split()[:6])
         except Exception as e:
             print(f"Error al generar título: {e}")
             return None

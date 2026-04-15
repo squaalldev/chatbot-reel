@@ -4,6 +4,7 @@ import joblib
 import streamlit as st
 from dotenv import load_dotenv
 from system_prompts import get_unified_reel_prompt  # Cambiar de get_unified_puv_prompt a get_unified_reel_prompt
+from reel_formulas import reel_formulas
 from session_state import (
     SessionState,
     DEFAULT_GEMINI_MODEL,
@@ -72,8 +73,61 @@ def handle_chat_title(prompt):
         state.chat_title = past_chats[state.chat_id]
     joblib.dump(past_chats, PAST_CHATS_LIST_PATH)
 
+def detect_formula_selection(prompt):
+    """Detecta si el usuario eligió una fórmula por nombre o por número."""
+    normalized_prompt = prompt.lower().strip()
+    formula_names = list(reel_formulas.keys())
+
+    # Selección por número (1, 2, 3...)
+    if normalized_prompt.isdigit():
+        formula_index = int(normalized_prompt) - 1
+        if 0 <= formula_index < len(formula_names):
+            return formula_names[formula_index]
+
+    # Selección por nombre parcial/completo
+    for formula_name in formula_names:
+        if formula_name.lower() in normalized_prompt:
+            return formula_name
+
+    return None
+
+def get_user_context_for_formula(max_user_messages=6):
+    """Recupera contexto reciente del usuario para rellenar la fórmula elegida."""
+    recent_user_messages = [
+        m['content'] for m in state.messages
+        if m.get('role') == 'user'
+    ][-max_user_messages:]
+    return "\n".join(f"- {message}" for message in recent_user_messages)
+
+def build_formula_prompt(formula_name):
+    """Construye un prompt estricto usando la fórmula del diccionario."""
+    formula_data = reel_formulas[formula_name]
+    formula_description = formula_data.get('description', '').strip()
+    user_context = get_user_context_for_formula()
+
+    return f"""
+El usuario eligió explícitamente esta fórmula: "{formula_name}".
+
+APLICA ESTRICTAMENTE la siguiente estructura:
+{formula_description}
+
+Contexto real del usuario (úsalo para personalizar el guion):
+{user_context if user_context else '- Sin contexto previo suficiente.'}
+
+Instrucciones obligatorias de salida:
+1) Devuelve SOLO el texto final del Reel (sin encabezados ni etiquetas).
+2) Respeta el orden y los pasos de la fórmula elegida.
+3) Incluye un gancho potente y un cierre con llamado a la acción.
+4) Que tenga longitud aproximada de 60 segundos al leer.
+"""
+
 def get_enhanced_prompt(prompt, is_example):
     """Genera el prompt mejorado según el tipo de mensaje"""
+    selected_formula = detect_formula_selection(prompt)
+    if selected_formula:
+        st.session_state.selected_formula = selected_formula
+        return build_formula_prompt(selected_formula)
+
     if is_greeting(prompt):
         return f"El usuario te ha saludado con '{prompt}'. Preséntate brevemente, explica qué es un Reel y por qué es importante, y haz las 3 preguntas iniciales para comenzar a crear el guion del Reel (audiencia ideal, producto/servicio, y llamado a la acción). Sé amigable, breve y toma la iniciativa como el experto que eres."
     elif is_example:
