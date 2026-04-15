@@ -1,6 +1,7 @@
 import streamlit as st
 import joblib
-import google.generativeai as genai
+import os
+from google import genai
 
 DEFAULT_GEMINI_MODEL = 'gemini-3.1-flash-lite-preview'
 DATA_DIR = 'data'
@@ -28,6 +29,9 @@ class SessionState:
             
         if 'model' not in st.session_state:
             st.session_state.model = None
+
+        if 'client' not in st.session_state:
+            st.session_state.client = None
             
         if 'chat' not in st.session_state:
             st.session_state.chat = None
@@ -75,6 +79,14 @@ class SessionState:
     @model.setter
     def model(self, value):
         st.session_state.model = value
+
+    @property
+    def client(self):
+        return st.session_state.client
+
+    @client.setter
+    def client(self, value):
+        st.session_state.client = value
     
     @property
     def chat(self):
@@ -107,11 +119,14 @@ class SessionState:
         """Limpia el prompt del estado de la sesión"""
         self.prompt = None
     
-    def initialize_model(self, model_name=None):
+    def initialize_model(self, model_name=None, api_key=None):
         """Inicializa el modelo de IA"""
         if model_name is None:
             model_name = DEFAULT_GEMINI_MODEL
-        self.model = genai.GenerativeModel(model_name)
+        if api_key is None:
+            api_key = os.environ.get('GOOGLE_API_KEY')
+        self.client = genai.Client(api_key=api_key)
+        self.model = model_name
     
     def initialize_chat(self, history=None):
         """Inicializa el chat con el modelo"""
@@ -119,11 +134,15 @@ class SessionState:
             history = self.gemini_history
         
         # Asegurar que el modelo está inicializado
-        if self.model is None:
+        if self.model is None or self.client is None:
             self.initialize_model()
-            
-        # Inicializar el chat sin generation_config
-        self.chat = self.model.start_chat(history=history)
+
+        chat_kwargs = {'model': self.model}
+        if history:
+            chat_kwargs['history'] = history
+
+        # Inicializar chat con el SDK moderno
+        self.chat = self.client.chats.create(**chat_kwargs)
         
         # Verificar que el chat se inicializó correctamente
         if self.chat is None:
@@ -135,33 +154,28 @@ class SessionState:
             if self.chat is None:
                 self.initialize_chat()
                 
-            return self.chat.send_message(
-                prompt,
-                stream=stream,
-                generation_config={
-                    "temperature": 0.9
-                }
-            )
+            if stream:
+                return self.chat.send_message_stream(prompt)
+            return self.chat.send_message(prompt)
         except Exception as e:
             print(f"Error al enviar mensaje: {e}")
             # Reintentar una vez si hay error
             self.initialize_chat()
-            return self.chat.send_message(
-                prompt,
-                stream=stream,
-                generation_config={
-                    "temperature": 0.9
-                }
-            )
+            if stream:
+                return self.chat.send_message_stream(prompt)
+            return self.chat.send_message(prompt)
     
     def generate_chat_title(self, prompt, model_name=None):
         """Genera un título para el chat basado en el primer mensaje"""
         try:
             if model_name is None:
                 model_name = DEFAULT_GEMINI_MODEL
-            title_generator = genai.GenerativeModel(model_name)
-            title_response = title_generator.generate_content(
-                f"Genera un título corto (máximo 5 palabras) que describa de qué trata esta consulta, sin usar comillas ni puntuación: '{prompt}'")
+            if self.client is None:
+                self.client = genai.Client(api_key=os.environ.get('GOOGLE_API_KEY'))
+            title_response = self.client.models.generate_content(
+                model=model_name,
+                contents=f"Genera un título corto (máximo 5 palabras) que describa de qué trata esta consulta, sin usar comillas ni puntuación: '{prompt}'"
+            )
             return title_response.text.strip()
         except Exception as e:
             print(f"Error al generar título: {e}")

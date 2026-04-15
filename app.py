@@ -2,7 +2,6 @@ import time
 import os
 import joblib
 import streamlit as st
-import google.generativeai as genai
 from dotenv import load_dotenv
 from system_prompts import get_unified_reel_prompt  # Cambiar de get_unified_puv_prompt a get_unified_reel_prompt
 from session_state import (
@@ -14,10 +13,7 @@ from session_state import (
 
 # Inicializar el estado de la sesión
 state = SessionState()
-STREAM_PRESETS = {
-    'Rápido': {'batch_size': 24, 'delay_seconds': 0.0},
-    'Cinemático': {'batch_size': 1, 'delay_seconds': 0.01},
-}
+STREAM_SETTINGS = {'batch_size': 1, 'delay_seconds': 0.01}
 
 # Función para detectar saludos y generar respuestas personalizadas
 def is_greeting(text):
@@ -51,13 +47,14 @@ def process_message(prompt, is_example=False):
             typing_indicator.markdown("*Generando respuesta...*")
             
             response = state.send_message(enhanced_prompt)
-            stream_mode = st.session_state.get('stream_mode', 'Rápido')
-            stream_settings = STREAM_PRESETS.get(stream_mode, STREAM_PRESETS['Rápido'])
-            full_response = stream_response(response, message_placeholder, typing_indicator, stream_settings)
+            full_response = stream_response(response, message_placeholder, typing_indicator, STREAM_SETTINGS)
             
             if full_response:
                 state.add_message(MODEL_ROLE, full_response, AI_AVATAR_ICON)
-                state.gemini_history = state.chat.history
+                if hasattr(state.chat, 'get_history'):
+                    state.gemini_history = state.chat.get_history()
+                else:
+                    state.gemini_history = getattr(state.chat, 'history', [])
                 state.save_chat_history()
                 
         except Exception as e:
@@ -200,7 +197,6 @@ GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
 if not GOOGLE_API_KEY:
     st.error("Falta la variable de entorno GOOGLE_API_KEY. Configúrala para continuar.")
     st.stop()
-genai.configure(api_key=GOOGLE_API_KEY)
 
 # Configuración de la aplicación
 new_chat_id = f'{time.time()}'
@@ -224,14 +220,6 @@ except (FileNotFoundError, EOFError):
 # Sidebar para seleccionar chats anteriores
 with st.sidebar:
     st.write('# Chats Anteriores')
-    st.write('### Velocidad de respuesta')
-    st.session_state.stream_mode = st.radio(
-        label='Modo de streaming',
-        options=list(STREAM_PRESETS.keys()),
-        index=0 if st.session_state.get('stream_mode', 'Rápido') == 'Rápido' else 1,
-        horizontal=True,
-        label_visibility='collapsed',
-    )
 
     if state.chat_id is None:
         state.chat_id = st.selectbox(
@@ -256,7 +244,7 @@ with st.sidebar:
 state.load_chat_history()
 
 # Inicializar el modelo y el chat
-state.initialize_model(DEFAULT_GEMINI_MODEL)
+state.initialize_model(DEFAULT_GEMINI_MODEL, api_key=GOOGLE_API_KEY)
 state.initialize_chat()  # Siempre inicializar el chat después del modelo
 
 # Mostrar mensajes del historial
