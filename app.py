@@ -189,9 +189,9 @@ def display_examples():
     for idx, ejemplo in enumerate(ejemplos):
         with cols[idx]:
             if st.button(ejemplo["texto"], key=f"ejemplo_{idx}", help=ejemplo["prompt"]):
-                selected_prompt = ejemplo["prompt"]
-
-    return selected_prompt
+                st.session_state.pending_example_prompt = ejemplo["prompt"]
+                st.session_state.hide_initial_menu = True
+                st.rerun()
 
 # Cargar variables de entorno
 load_dotenv()
@@ -260,6 +260,15 @@ for message in state.messages:
 # Capturar entrada del usuario antes de renderizar el menú inicial
 user_prompt = st.chat_input('Describe tu audiencia y el objetivo de tu Reel...')
 
+if 'pending_example_prompt' not in st.session_state:
+    st.session_state.pending_example_prompt = None
+
+if 'hide_initial_menu' not in st.session_state:
+    st.session_state.hide_initial_menu = False
+
+if state.has_messages():
+    st.session_state.hide_initial_menu = True
+
 # Inicializar el chat con el prompt unificado una sola vez por chat nuevo
 if 'system_prompt_initialized_chat_id' not in st.session_state:
     st.session_state.system_prompt_initialized_chat_id = None
@@ -277,19 +286,24 @@ if (
 
 # Renderizar menú inicial en un contenedor limpiable
 initial_menu_container = st.container()
-selected_example_prompt = None
-
-if not state.has_messages() and not user_prompt:
+if (
+    not st.session_state.hide_initial_menu
+    and not state.has_messages()
+    and not user_prompt
+    and not st.session_state.pending_example_prompt
+):
     with initial_menu_container:
         display_initial_header()
-        selected_example_prompt = display_examples()
+        display_examples()
 
 # Procesar entrada del usuario (oculta el menú inmediatamente)
 if user_prompt:
+    st.session_state.hide_initial_menu = True
     initial_menu_container.empty()
     process_message(user_prompt, is_example=False)
 
 # Procesar ejemplo seleccionado (oculta el menú inmediatamente)
-if selected_example_prompt:
+if st.session_state.pending_example_prompt:
     initial_menu_container.empty()
-    process_message(selected_example_prompt, is_example=True)
+    process_message(st.session_state.pending_example_prompt, is_example=True)
+    st.session_state.pending_example_prompt = None
