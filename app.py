@@ -241,7 +241,7 @@ with st.sidebar:
 state.load_chat_history()
 
 # Inicializar el modelo y el chat
-state.initialize_model('gemini-2.0-flash')
+state.initialize_model('gemini-3.1-flash-lite-preview')
 state.initialize_chat()  # Siempre inicializar el chat después del modelo
 
 # Mostrar mensajes del historial
