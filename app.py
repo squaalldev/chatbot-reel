@@ -255,24 +255,32 @@ for message in state.messages:
     ):
         st.markdown(message['content'])
 
-# Mensaje inicial del sistema si es un chat nuevo
-if not state.has_messages():
-    # Mostrar la carátula inicial con el logo centrado
-    display_initial_header()
-    
-    # Mostrar los ejemplos
-    display_examples()
+# Capturar entrada del usuario antes de renderizar el menú inicial
+user_prompt = st.chat_input('Describe tu audiencia y el objetivo de tu Reel...')
 
-    # Inicializar el chat con el prompt unificado
+# Inicializar el chat con el prompt unificado una sola vez por chat nuevo
+if 'system_prompt_initialized_chat_id' not in st.session_state:
+    st.session_state.system_prompt_initialized_chat_id = None
+
+if (
+    not state.has_messages()
+    and st.session_state.system_prompt_initialized_chat_id != state.chat_id
+):
     system_prompt = get_unified_reel_prompt()  # Cambiar de get_unified_puv_prompt a get_unified_reel_prompt
     if state.chat is not None:  # Verificación adicional de seguridad
-        state.chat.send_message(system_prompt)
+        state.send_message(system_prompt, stream=False)
+        st.session_state.system_prompt_initialized_chat_id = state.chat_id
     else:
         st.error("Error: No se pudo inicializar el chat correctamente.")
 
+# Mostrar menú inicial solo si no hay mensajes y no hay interacción activa
+if not state.has_messages() and not state.has_prompt() and not user_prompt:
+    display_initial_header()
+    display_examples()
+
 # Procesar entrada del usuario
-if prompt := st.chat_input('Describe tu audiencia y el objetivo de tu Reel...'):
-    process_message(prompt, is_example=False)
+if user_prompt:
+    process_message(user_prompt, is_example=False)
 
 # Procesar ejemplos seleccionados
 if state.has_prompt():
