@@ -1,4 +1,5 @@
 import os
+import json
 from typing import Optional
 
 import streamlit as st
@@ -24,12 +25,17 @@ class FirebaseSessionStore:
         if firebase_admin is None:
             return None
 
+        service_account_json = os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")
         service_account_path = os.environ.get("FIREBASE_SERVICE_ACCOUNT_PATH")
-        if not service_account_path:
+        if not service_account_json and not service_account_path:
             return None
 
         if not firebase_admin._apps:
-            cred = credentials.Certificate(service_account_path)
+            if service_account_json:
+                cred_info = json.loads(service_account_json)
+                cred = credentials.Certificate(cred_info)
+            else:
+                cred = credentials.Certificate(service_account_path)
             firebase_admin.initialize_app(cred)
 
         return cls(firestore.client())
