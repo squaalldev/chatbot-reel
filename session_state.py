@@ -2,6 +2,7 @@ import streamlit as st
 import joblib
 import os
 from google import genai
+from google.genai import types
 
 DEFAULT_GEMINI_MODEL = 'gemini-3.1-flash-lite-preview'
 DATA_DIR = 'data'
@@ -38,6 +39,9 @@ class SessionState:
             
         if 'prompt' not in st.session_state:
             st.session_state.prompt = None
+
+        if 'system_instruction' not in st.session_state:
+            st.session_state.system_instruction = None
     
     # Getters y setters para cada propiedad
     @property
@@ -103,6 +107,14 @@ class SessionState:
     @prompt.setter
     def prompt(self, value):
         st.session_state.prompt = value
+
+    @property
+    def system_instruction(self):
+        return st.session_state.system_instruction
+
+    @system_instruction.setter
+    def system_instruction(self, value):
+        st.session_state.system_instruction = value
     
     # Métodos de utilidad
     def add_message(self, role, content, avatar=None):
@@ -128,10 +140,14 @@ class SessionState:
         self.client = genai.Client(api_key=api_key)
         self.model = model_name
     
-    def initialize_chat(self, history=None):
+    def initialize_chat(self, history=None, system_instruction=None):
         """Inicializa el chat con el modelo"""
         if history is None:
             history = self.gemini_history
+        if system_instruction is None:
+            system_instruction = self.system_instruction
+        else:
+            self.system_instruction = system_instruction
         
         # Asegurar que el modelo está inicializado
         if self.model is None or self.client is None:
@@ -140,6 +156,10 @@ class SessionState:
         chat_kwargs = {'model': self.model}
         if history:
             chat_kwargs['history'] = history
+        if system_instruction:
+            chat_kwargs['config'] = types.GenerateContentConfig(
+                system_instruction=system_instruction
+            )
 
         # Inicializar chat con el SDK moderno
         self.chat = self.client.chats.create(**chat_kwargs)

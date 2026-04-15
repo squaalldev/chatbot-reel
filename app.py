@@ -246,8 +246,9 @@ with st.sidebar:
 state.load_chat_history()
 
 # Inicializar el modelo y el chat
+system_prompt = get_unified_reel_prompt()
 state.initialize_model(DEFAULT_GEMINI_MODEL, api_key=GOOGLE_API_KEY)
-state.initialize_chat()  # Siempre inicializar el chat después del modelo
+state.initialize_chat(system_instruction=system_prompt)  # Siempre inicializar el chat después del modelo
 
 # Mostrar mensajes del historial
 for message in state.messages:
@@ -268,21 +269,6 @@ if 'hide_initial_menu' not in st.session_state:
 
 if state.has_messages():
     st.session_state.hide_initial_menu = True
-
-# Inicializar el chat con el prompt unificado una sola vez por chat nuevo
-if 'system_prompt_initialized_chat_id' not in st.session_state:
-    st.session_state.system_prompt_initialized_chat_id = None
-
-if (
-    not state.has_messages()
-    and st.session_state.system_prompt_initialized_chat_id != state.chat_id
-):
-    system_prompt = get_unified_reel_prompt()  # Cambiar de get_unified_puv_prompt a get_unified_reel_prompt
-    if state.chat is not None:  # Verificación adicional de seguridad
-        state.send_message(system_prompt, stream=False)
-        st.session_state.system_prompt_initialized_chat_id = state.chat_id
-    else:
-        st.error("Error: No se pudo inicializar el chat correctamente.")
 
 # Renderizar menú inicial en un contenedor limpiable
 initial_menu_container = st.container()
