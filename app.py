@@ -3,13 +3,13 @@ import os
 import joblib
 import streamlit as st
 from dotenv import load_dotenv
+from firebase_store import FirebaseSessionStore
 from system_prompts import get_unified_reel_prompt  # Cambiar de get_unified_puv_prompt a get_unified_reel_prompt
 from reel_formulas import reel_formulas
 from session_state import (
     SessionState,
     DEFAULT_GEMINI_MODEL,
     DATA_DIR,
-    PAST_CHATS_LIST_PATH,
 )
 
 # Inicializar el estado de la sesión
@@ -71,7 +71,10 @@ def handle_chat_title(prompt):
         past_chats[state.chat_id] = state.chat_title
     else:
         state.chat_title = past_chats[state.chat_id]
-    joblib.dump(past_chats, PAST_CHATS_LIST_PATH)
+    if state.session_store:
+        state.session_store.save_chat_index(state.user_id, past_chats)
+    else:
+        joblib.dump(past_chats, past_chats_path)
 
 def detect_formula_selection(prompt):
     """Detecta si el usuario eligió una fórmula por nombre o por número."""
@@ -260,18 +263,31 @@ MODEL_ROLE = 'ai'
 AI_AVATAR_ICON = '🤖'  # Cambia el emoji por uno de robot para coincidir con tu logo
 USER_AVATAR_ICON = '👤'  # Añade un avatar para el usuario
 
+# Resolver usuario actual (Firebase Auth token -> uid, fallback local)
+firebase_store = FirebaseSessionStore.from_env()
+id_token = st.query_params.get("token")
+firebase_uid = None
+if firebase_store and id_token:
+    firebase_uid = firebase_store.verify_id_token(id_token)
+state.set_storage(firebase_uid or state.user_id, firebase_store)
+
+user_data_dir = f'{DATA_DIR}/users/{state.user_id}'
+past_chats_path = f'{user_data_dir}/past_chats_list'
+
 # Crear carpeta de datos si no existe
 try:
-    os.mkdir(DATA_DIR)
-except FileExistsError:
-    # data/ folder already exists
+    os.makedirs(user_data_dir, exist_ok=True)
+except OSError:
     pass
 
 # Cargar chats anteriores
-try:
-    past_chats: dict = joblib.load(PAST_CHATS_LIST_PATH)
-except (FileNotFoundError, EOFError):
-    past_chats = {}
+if state.session_store:
+    past_chats = state.session_store.load_chat_index(state.user_id)
+else:
+    try:
+        past_chats = joblib.load(past_chats_path)
+    except (FileNotFoundError, EOFError):
+        past_chats = {}
 
 # Sidebar para seleccionar chats anteriores
 with st.sidebar:

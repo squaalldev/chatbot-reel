@@ -1,6 +1,7 @@
 import streamlit as st
 import joblib
 import os
+import uuid
 from google import genai
 from google.genai import types
 
@@ -42,6 +43,12 @@ class SessionState:
 
         if 'system_instruction' not in st.session_state:
             st.session_state.system_instruction = None
+
+        if 'user_id' not in st.session_state:
+            st.session_state.user_id = f'local-{uuid.uuid4()}'
+
+        if 'session_store' not in st.session_state:
+            st.session_state.session_store = None
     
     # Getters y setters para cada propiedad
     @property
@@ -115,6 +122,22 @@ class SessionState:
     @system_instruction.setter
     def system_instruction(self, value):
         st.session_state.system_instruction = value
+
+    @property
+    def user_id(self):
+        return st.session_state.user_id
+
+    @user_id.setter
+    def user_id(self, value):
+        st.session_state.user_id = value
+
+    @property
+    def session_store(self):
+        return st.session_state.session_store
+
+    @session_store.setter
+    def session_store(self, value):
+        st.session_state.session_store = value
     
     # Métodos de utilidad
     def add_message(self, role, content, avatar=None):
@@ -130,6 +153,11 @@ class SessionState:
     def clear_prompt(self):
         """Limpia el prompt del estado de la sesión"""
         self.prompt = None
+
+    def set_storage(self, user_id, session_store=None):
+        """Configura el usuario actual y el store opcional (Firebase)."""
+        self.user_id = user_id
+        self.session_store = session_store
     
     def initialize_model(self, model_name=None, api_key=None):
         """Inicializa el modelo de IA"""
@@ -214,6 +242,11 @@ class SessionState:
         if chat_id is None:
             chat_id = self.chat_id
         
+        if self.session_store:
+            self.session_store.save_chat_history(self.user_id, chat_id, self.messages, self.gemini_history)
+            return
+
+        os.makedirs(self._user_data_dir(), exist_ok=True)
         joblib.dump(self.messages, self._st_messages_path(chat_id))
         joblib.dump(self.gemini_history, self._gemini_messages_path(chat_id))
     
@@ -223,6 +256,16 @@ class SessionState:
             chat_id = self.chat_id
         
         try:
+            if self.session_store:
+                messages, gemini_history = self.session_store.load_chat_history(self.user_id, chat_id)
+                if messages is not None and gemini_history is not None:
+                    self.messages = messages
+                    self.gemini_history = gemini_history
+                    return True
+                self.messages = []
+                self.gemini_history = []
+                return False
+
             self.messages = joblib.load(self._st_messages_path(chat_id))
             self.gemini_history = joblib.load(self._gemini_messages_path(chat_id))
             return True
@@ -232,10 +275,13 @@ class SessionState:
             return False
 
     def _st_messages_path(self, chat_id):
-        return f'{DATA_DIR}/{chat_id}-st_messages'
+        return f'{self._user_data_dir()}/{chat_id}-st_messages'
 
     def _gemini_messages_path(self, chat_id):
-        return f'{DATA_DIR}/{chat_id}-gemini_messages'
+        return f'{self._user_data_dir()}/{chat_id}-gemini_messages'
+
+    def _user_data_dir(self):
+        return f'{DATA_DIR}/users/{self.user_id}'
     
     def has_messages(self):
         """Verifica si hay mensajes en el historial"""
