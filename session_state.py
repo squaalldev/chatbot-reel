@@ -3,6 +3,8 @@ import time
 import joblib
 import google.generativeai as genai
 
+DEFAULT_GEMINI_MODEL = 'gemini-3.1-flash-lite-preview'
+
 class SessionState:
     """
     Clase para gestionar el estado de la sesión de Streamlit de manera centralizada.
@@ -105,8 +107,10 @@ class SessionState:
         """Limpia el prompt del estado de la sesión"""
         self.prompt = None
     
-    def initialize_model(self, model_name='gemini-3.1-flash-lite-preview'):
+    def initialize_model(self, model_name=None):
         """Inicializa el modelo de IA"""
+        if model_name is None:
+            model_name = DEFAULT_GEMINI_MODEL
         self.model = genai.GenerativeModel(model_name)
     
     def initialize_chat(self, history=None):
@@ -150,9 +154,11 @@ class SessionState:
                 }
             )
     
-    def generate_chat_title(self, prompt, model_name='gemini-3.1-flash-lite-preview'):
+    def generate_chat_title(self, prompt, model_name=None):
         """Genera un título para el chat basado en el primer mensaje"""
         try:
+            if model_name is None:
+                model_name = DEFAULT_GEMINI_MODEL
             title_generator = genai.GenerativeModel(model_name)
             title_response = title_generator.generate_content(
                 f"Genera un título corto (máximo 5 palabras) que describa de qué trata esta consulta, sin usar comillas ni puntuación: '{prompt}'")

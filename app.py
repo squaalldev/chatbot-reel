@@ -6,7 +6,7 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 from reel_formulas import reel_formulas  # Cambiar de puv_formulas a reel_formulas
 from system_prompts import get_unified_reel_prompt  # Cambiar de get_unified_puv_prompt a get_unified_reel_prompt
-from session_state import SessionState
+from session_state import SessionState, DEFAULT_GEMINI_MODEL
 
 # Inicializar el estado de la sesión
 state = SessionState()
@@ -241,7 +241,7 @@ with st.sidebar:
 state.load_chat_history()
 
 # Inicializar el modelo y el chat
-state.initialize_model('gemini-3.1-flash-lite-preview')
+state.initialize_model(DEFAULT_GEMINI_MODEL)
 state.initialize_chat()  # Siempre inicializar el chat después del modelo
 
 # Mostrar mensajes del historial
