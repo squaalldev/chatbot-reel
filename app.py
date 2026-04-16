@@ -369,9 +369,11 @@ if user_prompt:
     st.session_state.hide_initial_menu = True
     initial_menu_container.empty()
     process_message(user_prompt, is_example=False)
+    st.rerun()
 
 # Procesar ejemplo seleccionado (oculta el menú inmediatamente)
 if st.session_state.pending_example_prompt:
     initial_menu_container.empty()
     process_message(st.session_state.pending_example_prompt, is_example=True)
     st.session_state.pending_example_prompt = None
+    st.rerun()
