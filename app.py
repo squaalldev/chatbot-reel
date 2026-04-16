@@ -1,5 +1,6 @@
 import time
 import os
+import uuid
 import joblib
 import streamlit as st
 from dotenv import load_dotenv
@@ -18,11 +19,27 @@ STREAM_SETTINGS = {'batch_size': 1, 'delay_seconds': 0.01}
 user_past_chats_list_path = None
 
 def get_user_namespace():
-    """Obtiene un namespace por sesión de Streamlit para aislar historial entre usuarios."""
-    context = get_script_run_ctx()
-    if context and getattr(context, 'session_id', None):
-        return context.session_id
-    return 'default'
+    """
+    Obtiene un namespace para persistencia.
+    - Si CHATBOT_USER_NAMESPACE está definido, se usa ese valor (recomendado para app de un solo usuario).
+    - Si MULTI_USER_MODE=true, usa session_id para aislar por sesión.
+    - Caso contrario, usa un user_id persistente en query params para aislar por usuario y sobrevivir reinicios.
+    """
+    configured_namespace = os.environ.get('CHATBOT_USER_NAMESPACE')
+    if configured_namespace:
+        return configured_namespace
+
+    is_multi_user_mode = os.environ.get('MULTI_USER_MODE', 'false').strip().lower() == 'true'
+    if is_multi_user_mode:
+        context = get_script_run_ctx()
+        if context and getattr(context, 'session_id', None):
+            return context.session_id
+
+    user_id = st.query_params.get('uid')
+    if not user_id:
+        user_id = uuid.uuid4().hex
+        st.query_params['uid'] = user_id
+    return f'user_{user_id}'
 
 # Función para detectar saludos y generar respuestas personalizadas
 def is_greeting(text):
