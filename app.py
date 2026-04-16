@@ -276,22 +276,38 @@ with st.sidebar:
     st.write('# Chats Anteriores')
 
     if state.chat_id is None:
-        state.chat_id = st.selectbox(
-            label='Selecciona un chat anterior',
-            options=[new_chat_id] + list(past_chats.keys()),
-            format_func=lambda x: past_chats.get(x, 'Nuevo Chat'),
-            placeholder='_',
-        )
-    else:
-        # This will happen the first time AI response comes in
-        state.chat_id = st.selectbox(
-            label='Selecciona un chat anterior',
-            options=[new_chat_id, state.chat_id] + list(past_chats.keys()),
-            index=1,
-            format_func=lambda x: past_chats.get(x, 'Nuevo Chat' if x != state.chat_id else state.chat_title),
-            placeholder='_',
-        )
-    # Save new chats after a message has been sent to AI
+        state.chat_id = new_chat_id
+
+    if st.button('＋ Nuevo chat', key='new_chat_sidebar', use_container_width=True):
+        state.chat_id = new_chat_id
+        st.session_state.pending_example_prompt = None
+        st.session_state.hide_initial_menu = False
+        st.rerun()
+
+    st.caption('Sesiones')
+
+    def chat_sort_key(chat_id):
+        try:
+            return float(chat_id)
+        except (TypeError, ValueError):
+            return 0.0
+
+    sorted_chat_ids = sorted(past_chats.keys(), key=chat_sort_key, reverse=True)
+    for index, chat_id in enumerate(sorted_chat_ids):
+        chat_title = past_chats.get(chat_id, f'SesiónChat-{chat_id}')
+        is_active_chat = chat_id == state.chat_id
+        button_label = f'● {chat_title}' if is_active_chat else chat_title
+
+        if st.button(
+            button_label,
+            key=f'chat_session_{index}_{chat_id}',
+            use_container_width=True,
+            type='primary' if is_active_chat else 'secondary',
+        ):
+            if state.chat_id != chat_id:
+                state.chat_id = chat_id
+                st.rerun()
+
     state.chat_title = f'SesiónChat-{state.chat_id}'
 
 # Cargar historial del chat

@@ -29,6 +29,25 @@
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
+/* Sidebar estilo tipo lista de chats (más similar a ChatGPT) */
+section[data-testid="stSidebar"] .stButton > button {
+    min-height: 40px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 13px;
+    margin: 2px 0;
+    background-color: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+section[data-testid="stSidebar"] .stButton > button:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: none;
+    box-shadow: none;
+}
+
 /* Ajustes para el contenedor principal */
 .main .block-container {
     padding-top: 2rem;
