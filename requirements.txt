@@ -1,5 +1,4 @@
 google-genai
-firebase-admin
 streamlit
 joblib
 python-dotenv
