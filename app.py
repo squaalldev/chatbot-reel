@@ -309,6 +309,19 @@ with st.sidebar:
 # Cargar historial del chat
 state.load_chat_history()
 
+if 'pending_example_prompt' not in st.session_state:
+    st.session_state.pending_example_prompt = None
+
+if 'hide_initial_menu' not in st.session_state:
+    st.session_state.hide_initial_menu = False
+
+if 'active_chat_id' not in st.session_state:
+    st.session_state.active_chat_id = state.chat_id
+elif st.session_state.active_chat_id != state.chat_id:
+    st.session_state.active_chat_id = state.chat_id
+    st.session_state.pending_example_prompt = None
+    st.session_state.hide_initial_menu = state.has_messages()
+
 # Inicializar el modelo y el chat
 system_prompt = get_unified_reel_prompt()
 state.initialize_model(DEFAULT_GEMINI_MODEL, api_key=GOOGLE_API_KEY)
@@ -324,12 +337,6 @@ for message in state.messages:
 
 # Capturar entrada del usuario antes de renderizar el menú inicial
 user_prompt = st.chat_input('Describe tu audiencia y el objetivo de tu Reel...')
-
-if 'pending_example_prompt' not in st.session_state:
-    st.session_state.pending_example_prompt = None
-
-if 'hide_initial_menu' not in st.session_state:
-    st.session_state.hide_initial_menu = False
 
 if state.has_messages():
     st.session_state.hide_initial_menu = True
