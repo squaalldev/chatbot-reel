@@ -2,14 +2,19 @@ import time
 import os
 import joblib
 import streamlit as st
-import google.generativeai as genai
 from dotenv import load_dotenv
-from reel_formulas import reel_formulas  # Cambiar de puv_formulas a reel_formulas
 from system_prompts import get_unified_reel_prompt  # Cambiar de get_unified_puv_prompt a get_unified_reel_prompt
-from session_state import SessionState
+from reel_formulas import reel_formulas
+from session_state import (
+    SessionState,
+    DEFAULT_GEMINI_MODEL,
+    DATA_DIR,
+    PAST_CHATS_LIST_PATH,
+)
 
 # Inicializar el estado de la sesión
 state = SessionState()
+STREAM_SETTINGS = {'batch_size': 1, 'delay_seconds': 0.01}
 
 # Función para detectar saludos y generar respuestas personalizadas
 def is_greeting(text):
@@ -43,11 +48,14 @@ def process_message(prompt, is_example=False):
             typing_indicator.markdown("*Generando respuesta...*")
             
             response = state.send_message(enhanced_prompt)
-            full_response = stream_response(response, message_placeholder, typing_indicator)
+            full_response = stream_response(response, message_placeholder, typing_indicator, STREAM_SETTINGS)
             
             if full_response:
                 state.add_message(MODEL_ROLE, full_response, AI_AVATAR_ICON)
-                state.gemini_history = state.chat.history
+                if hasattr(state.chat, 'get_history'):
+                    state.gemini_history = state.chat.get_history()
+                else:
+                    state.gemini_history = getattr(state.chat, 'history', [])
                 state.save_chat_history()
                 
         except Exception as e:
@@ -63,50 +71,96 @@ def handle_chat_title(prompt):
         past_chats[state.chat_id] = state.chat_title
     else:
         state.chat_title = past_chats[state.chat_id]
-    joblib.dump(past_chats, 'data/past_chats_list')
+    joblib.dump(past_chats, PAST_CHATS_LIST_PATH)
+
+def detect_formula_selection(prompt):
+    """Detecta si el usuario eligió una fórmula por nombre o por número."""
+    normalized_prompt = prompt.lower().strip()
+    formula_names = list(reel_formulas.keys())
+
+    # Selección por número (1, 2, 3...)
+    if normalized_prompt.isdigit():
+        formula_index = int(normalized_prompt) - 1
+        if 0 <= formula_index < len(formula_names):
+            return formula_names[formula_index]
+
+    # Selección por nombre parcial/completo
+    for formula_name in formula_names:
+        if formula_name.lower() in normalized_prompt:
+            return formula_name
+
+    return None
+
+def get_user_context_for_formula(max_user_messages=6):
+    """Recupera contexto reciente del usuario para rellenar la fórmula elegida."""
+    recent_user_messages = [
+        m['content'] for m in state.messages
+        if m.get('role') == 'user'
+    ][-max_user_messages:]
+    return "\n".join(f"- {message}" for message in recent_user_messages)
+
+def build_formula_prompt(formula_name):
+    """Construye un prompt estricto usando la fórmula del diccionario."""
+    formula_data = reel_formulas[formula_name]
+    formula_description = formula_data.get('description', '').strip()
+    user_context = get_user_context_for_formula()
+
+    return f"""
+El usuario eligió explícitamente esta fórmula: "{formula_name}".
+
+APLICA ESTRICTAMENTE la siguiente estructura:
+{formula_description}
+
+Contexto real del usuario (úsalo para personalizar el guion):
+{user_context if user_context else '- Sin contexto previo suficiente.'}
+
+Instrucciones obligatorias de salida:
+1) Devuelve SOLO el texto final del Reel (sin encabezados ni etiquetas).
+2) Respeta el orden y los pasos de la fórmula elegida.
+3) Incluye un gancho potente y un cierre con llamado a la acción.
+4) Que tenga longitud aproximada de 60 segundos al leer.
+"""
 
 def get_enhanced_prompt(prompt, is_example):
     """Genera el prompt mejorado según el tipo de mensaje"""
+    selected_formula = detect_formula_selection(prompt)
+    if selected_formula:
+        st.session_state.selected_formula = selected_formula
+        return build_formula_prompt(selected_formula)
+
     if is_greeting(prompt):
         return f"El usuario te ha saludado con '{prompt}'. Preséntate brevemente, explica qué es un Reel y por qué es importante, y haz las 3 preguntas iniciales para comenzar a crear el guion del Reel (audiencia ideal, producto/servicio, y llamado a la acción). Sé amigable, breve y toma la iniciativa como el experto que eres."
     elif is_example:
         return f"El usuario ha seleccionado un ejemplo: '{prompt}'. Responde de manera conversacional y sencilla, como si estuvieras hablando con un amigo. Evita tecnicismos innecesarios. Enfócate en dar información práctica que ayude al usuario a crear su Reel. Usa ejemplos concretos cuando sea posible. Termina tu respuesta con una pregunta que invite al usuario a compartir información sobre su negocio para poder ayudarle a crear su Reel personalizado."
     return prompt
 
-def process_model_response(enhanced_prompt):
-    """Procesa la respuesta del modelo"""
-    with st.chat_message(MODEL_ROLE, avatar=AI_AVATAR_ICON):
-        try:
-            message_placeholder = st.empty()
-            typing_indicator = st.empty()
-            typing_indicator.markdown("*Generando respuesta...*")
-            
-            response = state.send_message(enhanced_prompt)
-            full_response = stream_response(response, message_placeholder, typing_indicator)
-            
-            # Actualizar historial
-            state.add_message(role=MODEL_ROLE, content=full_response, avatar=AI_AVATAR_ICON)
-            state.gemini_history = state.chat.history
-            state.save_chat_history()
-            
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
-
-def stream_response(response, message_placeholder, typing_indicator):
+def stream_response(response, message_placeholder, typing_indicator, stream_settings):
     """Maneja el streaming de la respuesta"""
     full_response = ''
+    batch_size = max(1, int(stream_settings.get('batch_size', 24)))
+    delay_seconds = max(0.0, float(stream_settings.get('delay_seconds', 0.0)))
+    pending_chars = 0
+
     try:
         for chunk in response:
             if chunk.text:
                 for ch in chunk.text:
                     full_response += ch
-                    time.sleep(0.01)
-                    typing_indicator.markdown("*Generando respuesta...*")
-                    message_placeholder.markdown(full_response + '▌')
+                    pending_chars += 1
+                    if pending_chars >= batch_size:
+                        if delay_seconds:
+                            time.sleep(delay_seconds)
+                        message_placeholder.markdown(full_response + '▌')
+                        pending_chars = 0
     except Exception as e:
         st.error(f"Error en el streaming: {str(e)}")
         return ''
-    
+
+    if pending_chars > 0:
+        if delay_seconds:
+            time.sleep(delay_seconds)
+        message_placeholder.markdown(full_response + '▌')
+
     typing_indicator.empty()
     message_placeholder.markdown(full_response)
     return full_response
@@ -188,13 +242,16 @@ def display_examples():
     for idx, ejemplo in enumerate(ejemplos):
         with cols[idx]:
             if st.button(ejemplo["texto"], key=f"ejemplo_{idx}", help=ejemplo["prompt"]):
-                state.prompt = ejemplo["prompt"]
+                st.session_state.pending_example_prompt = ejemplo["prompt"]
+                st.session_state.hide_initial_menu = True
                 st.rerun()
 
 # Cargar variables de entorno
 load_dotenv()
-GOOGLE_API_KEY=os.environ.get('GOOGLE_API_KEY')
-genai.configure(api_key=GOOGLE_API_KEY)
+GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
+if not GOOGLE_API_KEY:
+    st.error("Falta la variable de entorno GOOGLE_API_KEY. Configúrala para continuar.")
+    st.stop()
 
 # Configuración de la aplicación
 new_chat_id = f'{time.time()}'
@@ -204,20 +261,20 @@ USER_AVATAR_ICON = '👤'  # Añade un avatar para el usuario
 
 # Crear carpeta de datos si no existe
 try:
-    os.mkdir('data/')
-except:
-    # data/ folder already exists
+    os.mkdir(DATA_DIR)
+except FileExistsError:
     pass
 
 # Cargar chats anteriores
 try:
-    past_chats: dict = joblib.load('data/past_chats_list')
-except:
+    past_chats = joblib.load(PAST_CHATS_LIST_PATH)
+except (FileNotFoundError, EOFError):
     past_chats = {}
 
 # Sidebar para seleccionar chats anteriores
 with st.sidebar:
     st.write('# Chats Anteriores')
+
     if state.chat_id is None:
         state.chat_id = st.selectbox(
             label='Selecciona un chat anterior',
@@ -241,8 +298,9 @@ with st.sidebar:
 state.load_chat_history()
 
 # Inicializar el modelo y el chat
-state.initialize_model('gemini-3.1-flash-lite-preview')
-state.initialize_chat()  # Siempre inicializar el chat después del modelo
+system_prompt = get_unified_reel_prompt()
+state.initialize_model(DEFAULT_GEMINI_MODEL, api_key=GOOGLE_API_KEY)
+state.initialize_chat(system_instruction=system_prompt)  # Siempre inicializar el chat después del modelo
 
 # Mostrar mensajes del historial
 for message in state.messages:
@@ -252,28 +310,38 @@ for message in state.messages:
     ):
         st.markdown(message['content'])
 
-# Mensaje inicial del sistema si es un chat nuevo
-if not state.has_messages():
-    # Mostrar la carátula inicial con el logo centrado
-    display_initial_header()
-    
-    # Mostrar los ejemplos
-    display_examples()
+# Capturar entrada del usuario antes de renderizar el menú inicial
+user_prompt = st.chat_input('Describe tu audiencia y el objetivo de tu Reel...')
 
-    # Inicializar el chat con el prompt unificado
-    system_prompt = get_unified_reel_prompt()  # Cambiar de get_unified_puv_prompt a get_unified_reel_prompt
-    if state.chat is not None:  # Verificación adicional de seguridad
-        state.chat.send_message(system_prompt)
-    else:
-        st.error("Error: No se pudo inicializar el chat correctamente.")
+if 'pending_example_prompt' not in st.session_state:
+    st.session_state.pending_example_prompt = None
 
-# Procesar entrada del usuario
-if prompt := st.chat_input('Describe tu audiencia y el objetivo de tu Reel...'):
-    process_message(prompt, is_example=False)
+if 'hide_initial_menu' not in st.session_state:
+    st.session_state.hide_initial_menu = False
 
-# Procesar ejemplos seleccionados
-if state.has_prompt():
-    prompt = state.prompt
-    process_message(prompt, is_example=True)
-    # Limpiar el prompt
-    state.clear_prompt()
+if state.has_messages():
+    st.session_state.hide_initial_menu = True
+
+# Renderizar menú inicial en un contenedor limpiable
+initial_menu_container = st.container()
+if (
+    not st.session_state.hide_initial_menu
+    and not state.has_messages()
+    and not user_prompt
+    and not st.session_state.pending_example_prompt
+):
+    with initial_menu_container:
+        display_initial_header()
+        display_examples()
+
+# Procesar entrada del usuario (oculta el menú inmediatamente)
+if user_prompt:
+    st.session_state.hide_initial_menu = True
+    initial_menu_container.empty()
+    process_message(user_prompt, is_example=False)
+
+# Procesar ejemplo seleccionado (oculta el menú inmediatamente)
+if st.session_state.pending_example_prompt:
+    initial_menu_container.empty()
+    process_message(st.session_state.pending_example_prompt, is_example=True)
+    st.session_state.pending_example_prompt = None
