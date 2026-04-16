@@ -42,6 +42,9 @@ class SessionState:
 
         if 'system_instruction' not in st.session_state:
             st.session_state.system_instruction = None
+
+        if 'user_namespace' not in st.session_state:
+            st.session_state.user_namespace = 'default'
     
     # Getters y setters para cada propiedad
     @property
@@ -115,6 +118,15 @@ class SessionState:
     @system_instruction.setter
     def system_instruction(self, value):
         st.session_state.system_instruction = value
+
+    @property
+    def user_namespace(self):
+        return st.session_state.user_namespace
+
+    @user_namespace.setter
+    def user_namespace(self, value):
+        sanitized = str(value).replace('/', '_').replace('\\', '_').strip() or 'default'
+        st.session_state.user_namespace = sanitized
 
     # Métodos de utilidad
     def add_message(self, role, content, avatar=None):
@@ -215,7 +227,7 @@ class SessionState:
             chat_id = self.chat_id
         
         serialized_history = self._serialize_gemini_history(self.gemini_history)
-        os.makedirs(DATA_DIR, exist_ok=True)
+        os.makedirs(self._user_data_dir(), exist_ok=True)
         joblib.dump(self.messages, self._st_messages_path(chat_id))
         joblib.dump(serialized_history, self._gemini_messages_path(chat_id))
     
@@ -235,10 +247,13 @@ class SessionState:
             return False
 
     def _st_messages_path(self, chat_id):
-        return f'{DATA_DIR}/{chat_id}-st_messages'
+        return f'{self._user_data_dir()}/{chat_id}-st_messages'
 
     def _gemini_messages_path(self, chat_id):
-        return f'{DATA_DIR}/{chat_id}-gemini_messages'
+        return f'{self._user_data_dir()}/{chat_id}-gemini_messages'
+
+    def _user_data_dir(self):
+        return f'{DATA_DIR}/{self.user_namespace}'
 
     def _serialize_gemini_history(self, history):
         """Convierte tipos del SDK (Content/Part) a diccionarios serializables."""

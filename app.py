@@ -3,18 +3,26 @@ import os
 import joblib
 import streamlit as st
 from dotenv import load_dotenv
+from streamlit.runtime.scriptrunner import get_script_run_ctx
 from system_prompts import get_unified_reel_prompt  # Cambiar de get_unified_puv_prompt a get_unified_reel_prompt
 from reel_formulas import reel_formulas
 from session_state import (
     SessionState,
     DEFAULT_GEMINI_MODEL,
     DATA_DIR,
-    PAST_CHATS_LIST_PATH,
 )
 
 # Inicializar el estado de la sesión
 state = SessionState()
 STREAM_SETTINGS = {'batch_size': 1, 'delay_seconds': 0.01}
+user_past_chats_list_path = None
+
+def get_user_namespace():
+    """Obtiene un namespace por sesión de Streamlit para aislar historial entre usuarios."""
+    context = get_script_run_ctx()
+    if context and getattr(context, 'session_id', None):
+        return context.session_id
+    return 'default'
 
 # Función para detectar saludos y generar respuestas personalizadas
 def is_greeting(text):
@@ -71,7 +79,7 @@ def handle_chat_title(prompt):
         past_chats[state.chat_id] = state.chat_title
     else:
         state.chat_title = past_chats[state.chat_id]
-    joblib.dump(past_chats, PAST_CHATS_LIST_PATH)
+    joblib.dump(past_chats, user_past_chats_list_path)
 
 def detect_formula_selection(prompt):
     """Detecta si el usuario eligió una fórmula por nombre o por número."""
@@ -254,20 +262,19 @@ if not GOOGLE_API_KEY:
     st.stop()
 
 # Configuración de la aplicación
+state.user_namespace = get_user_namespace()
+user_past_chats_list_path = f'{DATA_DIR}/{state.user_namespace}/past_chats_list'
 new_chat_id = f'{time.time()}'
 MODEL_ROLE = 'ai'
 AI_AVATAR_ICON = '🤖'  # Cambia el emoji por uno de robot para coincidir con tu logo
 USER_AVATAR_ICON = '👤'  # Añade un avatar para el usuario
 
 # Crear carpeta de datos si no existe
-try:
-    os.mkdir(DATA_DIR)
-except FileExistsError:
-    pass
+os.makedirs(f'{DATA_DIR}/{state.user_namespace}', exist_ok=True)
 
 # Cargar chats anteriores
 try:
-    past_chats = joblib.load(PAST_CHATS_LIST_PATH)
+    past_chats = joblib.load(user_past_chats_list_path)
 except (FileNotFoundError, EOFError):
     past_chats = {}
 
