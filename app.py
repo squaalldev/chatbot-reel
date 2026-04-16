@@ -238,7 +238,6 @@ def display_examples():
     ]
 
     # Crear los botones de ejemplo
-    selected_prompt = None
     cols = st.columns(4)
     for idx, ejemplo in enumerate(ejemplos):
         with cols[idx]:
@@ -259,17 +258,6 @@ new_chat_id = f'{time.time()}'
 MODEL_ROLE = 'ai'
 AI_AVATAR_ICON = '🤖'  # Cambia el emoji por uno de robot para coincidir con tu logo
 USER_AVATAR_ICON = '👤'  # Añade un avatar para el usuario
-
-# Resolver usuario actual (Firebase Auth token -> uid, fallback local)
-firebase_store = FirebaseSessionStore.from_env()
-id_token = st.query_params.get("token")
-firebase_uid = None
-if firebase_store and id_token:
-    firebase_uid = firebase_store.verify_id_token(id_token)
-state.set_storage(firebase_uid or state.user_id, firebase_store)
-
-user_data_dir = f'{DATA_DIR}/users/{state.user_id}'
-past_chats_path = f'{user_data_dir}/past_chats_list'
 
 # Crear carpeta de datos si no existe
 try:
